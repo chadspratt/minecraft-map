@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<img id="map6" src="http://dogtato.net/minecraft/images/8/84/Map_6.png" alt="Map 6" width="536" height="535">
+<canvas id="myCanvas" width="536" height="535" style="border:1px solid #d3d3d3;">
+Your browser does not support the HTML5 canvas tag.</canvas>
+
+<script type="text/javascript">
+document.getElementById("map6").onload=function(){
+  var c=document.getElementById("myCanvas");
+  var ctx=c.getContext("2d");
+  var img=document.getElementById("map6");
+  ctx.drawImage(img,50,50);
+  var imgData=ctx.getImageData();
+  // invert colors
+  for (var i=0;i<imgData.data.length;i+=4)
+    {
+    imgData.data[i]=255-imgData.data[i];
+    imgData.data[i+1]=255-imgData.data[i+1];
+    imgData.data[i+2]=255-imgData.data[i+2];
+    imgData.data[i+3]=255;
+    }
+  ctx.putImageData(imgData,0,0);
+};
+</script>
+
+</body>
+</html>
+
