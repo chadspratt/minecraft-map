@@ -36,7 +36,6 @@ function submitMap(url, num, x, y) {
         'mapx=' + encodeURIComponent(x) + '&',
         'mapy=' + encodeURIComponent(y)]
         .join('');
-    window.alert(reqData);
     httpRequest.send(reqData);
 }
 

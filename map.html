@@ -1,30 +1,32 @@
 <!DOCTYPE html>
 <html>
+<head>
+<!--   // <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script> -->
+</head>
 <body>
 
-<img id="map6" src="http://dogtato.net/minecraft/images/8/84/Map_6.png" alt="Map 6" width="536" height="535">
-<canvas id="myCanvas" width="536" height="535" style="border:1px solid #d3d3d3;">
+<span id="getmapdata" style="cursor: pointer; text-decoration: underline">
+  load map
+</span>
+<span id="debugarea">debug area</span>
+<canvas id="mapCanvas" width="900" height="900" style="border:1px solid #d3d3d3;">
 Your browser does not support the HTML5 canvas tag.</canvas>
-
+<!-- 
+<img id="map6" src="http://dogtato.net/minecraft/images/8/84/Map_6.png" alt="Map 6" width="536" height="535">
 <script type="text/javascript">
 document.getElementById("map6").onload=function(){
-  var c=document.getElementById("myCanvas");
+  var c=document.getElementById("mapCanvas");
   var ctx=c.getContext("2d");
   var img=document.getElementById("map6");
-  ctx.drawImage(img,50,50);
-  var imgData=ctx.getImageData();
-  // invert colors
-  for (var i=0;i<imgData.data.length;i+=4)
-    {
-    imgData.data[i]=255-imgData.data[i];
-    imgData.data[i+1]=255-imgData.data[i+1];
-    imgData.data[i+2]=255-imgData.data[i+2];
-    imgData.data[i+3]=255;
-    }
-  ctx.putImageData(imgData,0,0);
+  ctx.drawImage(img,0,0);
 };
-</script>
 
+</script>
+ -->
+ <script type="text/javascript">
+  viewCenter = {x: 0, y: 0};
+</script>
+<script src="./js/getmaps.js"></script>
+<script src="./js/panmap.js"></script>
 </body>
 </html>
-
