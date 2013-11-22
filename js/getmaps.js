@@ -110,13 +110,13 @@ function mapDataReceived() {
             minY -= mapAdjust;
             viewCenter.x = (minX + maxX) / 2;
             viewCenter.y = (minY + maxY) / 2;
-            last = {x: canvas.width / 2 - viewCenter.x,
-                    y: canvas.height / 2 - viewCenter.y};
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            ctx.translate(last.x, last.y);
             // scale so the whole map fits
             scale = Math.max(canvas.width, canvas.height) /
                     Math.max(maxX - minX, maxY - minY);
+            last = {x: canvas.width / 2 - viewCenter.x * scale,
+                    y: canvas.height / 2 - viewCenter.y * scale};
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.translate(last.x, last.y);
             ctx.scale(scale, scale);
             // ctx.setTransform(scale, 0, 0, scale, last.x, last.y);
             setInterval(drawMap, 100); // set the animation into motion
