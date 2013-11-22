@@ -7,7 +7,8 @@ var httpRequest,
     viewCenter = {x: 0, y: 0},
     isDown = false,
     scale = 1,
-    mapSize = 128 * 8;
+    mapSize = 128 * 8,
+    mapAdjust = mapSize / 2;
 
 function drawMap() {
     'use strict';
@@ -24,14 +25,16 @@ function drawMap() {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // reapply scale and translation
     ctx.restore();
     // draw maps
     for (mapName in mapData.results) {
         if (mapData.results.hasOwnProperty(mapName)) {
             map = mapData.results[mapName].printouts;
-            x = map['X coord'];
+            // coords are map centers, need top left corners
+            x = map['X coord'] - mapAdjust;
             // n/s is measured as z in minecraft
-            y = map['Z coord'];
+            y = map['Z coord'] - mapAdjust;
             img = document.createElement("img");
             img.src = map['Image location'];
             // window.alert(img.src);
@@ -42,8 +45,8 @@ function drawMap() {
 
 canvas.onmousemove = function (e) {
     'use strict';
-    var xVal = e.pageX - this.offsetLeft - startCoords.x,
-        yVal = e.pageY - this.offsetTop - startCoords.y;
+    var xVal = e.pageX - canvas.offsetLeft - startCoords.x,
+        yVal = e.pageY - canvas.offsetTop - startCoords.y;
     if (isDown) {
         ctx.setTransform(scale, 0, 0, scale, xVal, yVal);
     }
@@ -52,15 +55,15 @@ canvas.onmousemove = function (e) {
 canvas.onmousedown = function (e) {
     'use strict';
     isDown = true;
-    startCoords = {x: e.pageX - this.offsetLeft - last.x,
-                   y: e.pageY - this.offsetTop - last.y};
+    startCoords = {x: e.pageX - canvas.offsetLeft - last.x,
+                   y: e.pageY - canvas.offsetTop - last.y};
 };
 
 document.body.onmouseup = function (e) {
     'use strict';
     isDown = false;
-    last = {x: e.pageX - this.offsetLeft - startCoords.x,
-            y: e.pageY - this.offsetTop - startCoords.y};
+    last = {x: e.pageX - canvas.offsetLeft - startCoords.x,
+            y: e.pageY - canvas.offsetTop - startCoords.y};
 };
 
 function mapDataReceived() {
@@ -101,18 +104,21 @@ function mapDataReceived() {
                 }
             }
             // coordinates were based on map center, adjust for edge
-            maxX += mapSize / 2;
-            maxY += mapSize / 2;
-            minX -= mapSize / 2;
-            minY -= mapSize / 2;
+            maxX += mapAdjust;
+            maxY += mapAdjust;
+            minX -= mapAdjust;
+            minY -= mapAdjust;
             viewCenter.x = (minX + maxX) / 2;
             viewCenter.y = (minY + maxY) / 2;
             last = {x: canvas.width / 2 - viewCenter.x,
                     y: canvas.height / 2 - viewCenter.y};
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.translate(last.x, last.y);
             // scale so the whole map fits
             scale = Math.max(canvas.width, canvas.height) /
                     Math.max(maxX - minX, maxY - minY);
-            ctx.setTransform(scale, 0, 0, scale, last.x, last.y);
+            ctx.scale(scale, scale);
+            // ctx.setTransform(scale, 0, 0, scale, last.x, last.y);
             setInterval(drawMap, 100); // set the animation into motion
         }
     }
