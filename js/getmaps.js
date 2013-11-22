@@ -43,7 +43,7 @@ function drawMap() {
     }
 }
 
-canvas.onmousemove = function (e) {
+document.body.onmousemove = function (e) {
     'use strict';
     var xVal = e.pageX - canvas.offsetLeft - startCoords.x,
         yVal = e.pageY - canvas.offsetTop - startCoords.y;
@@ -54,6 +54,12 @@ canvas.onmousemove = function (e) {
 
 canvas.onmousedown = function (e) {
     'use strict';
+    // check this in case the cursor was released outside the document
+    // in which case the event would have been missed
+    if (isDown) {
+        last = {x: e.pageX - canvas.offsetLeft - startCoords.x,
+                y: e.pageY - canvas.offsetTop - startCoords.y};
+    }
     isDown = true;
     startCoords = {x: e.pageX - canvas.offsetLeft - last.x,
                    y: e.pageY - canvas.offsetTop - last.y};
@@ -61,9 +67,12 @@ canvas.onmousedown = function (e) {
 
 document.body.onmouseup = function (e) {
     'use strict';
-    isDown = false;
-    last = {x: e.pageX - canvas.offsetLeft - startCoords.x,
-            y: e.pageY - canvas.offsetTop - startCoords.y};
+    // check that the click started on the canvas
+    if (isDown) {
+        isDown = false;
+        last = {x: e.pageX - canvas.offsetLeft - startCoords.x,
+                y: e.pageY - canvas.offsetTop - startCoords.y};
+    }
 };
 
 function mapDataReceived() {
