@@ -9,7 +9,8 @@ var httpRequest,
     isDown = false,
     scale = 1,
     mapSize = 128 * 8,
-    mapAdjust = mapSize / 2;
+    mapAdjust = mapSize / 2,
+    needUpdate = false;
 
 function drawMap() {
     'use strict';
@@ -17,25 +18,41 @@ function drawMap() {
         y,
         img,
         map,
-        // mapName,
-        i;
-    // clear canvas with a white background
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // reapply scale and translation
-    ctx.restore();
-    // draw maps
-    for (i = 0; i < mapArray.length; i += 1) {
-        map = mapArray[i];
-        x = map['X coord'];
-        // n/s is measured as z in minecraft
-        y = map['Z coord'];
-        img = document.createElement("img");
-        img.src = map['Image location'];
-        // coords are map centers, need top left corners
-        ctx.drawImage(img, x - mapAdjust, y - mapAdjust, mapSize, mapSize);
+        i,
+        // bounds of visible area
+        left,
+        right,
+        top,
+        bottom;
+    // only redraw when needed (transformation changed, features added)
+    if (needUpdate) {
+        left = viewCenter.x - canvas.width / 2 / scale;
+        right = left + canvas.width / scale;
+        top = viewCenter.y - canvas.height / 2 / scale;
+        bottom = top + canvas.height / scale;
+        // clear canvas with a white background
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // reapply scale and translation
+        ctx.restore();
+        // draw maps
+        for (i = 0; i < mapArray.length; i += 1) {
+            map = mapArray[i];
+            // coords are map centers, need top left corners
+            x = map['X coord'] - mapAdjust;
+            // n/s is measured as z in minecraft
+            y = map['Z coord'] - mapAdjust;
+            // check that map will be visible
+            if (x < right && x > left - mapSize
+                    && y < bottom && y > top - mapSize) {
+                img = document.createElement("img");
+                img.src = map['Image location'];
+                ctx.drawImage(img, x, y, mapSize, mapSize);
+            }
+        }
+        needUpdate = false;
     }
 }
 
@@ -45,6 +62,9 @@ document.body.onmousemove = function (e) {
         yVal = e.pageY - canvas.offsetTop - startCoords.y;
     if (isDown) {
         ctx.setTransform(scale, 0, 0, scale, xVal, yVal);
+        viewCenter = {x: (canvas.width / 2 - xVal) / scale,
+                      y: (canvas.height / 2 - yVal) / scale};
+        needUpdate = true;
     }
 };
 
@@ -63,24 +83,12 @@ canvas.onmousedown = function (e) {
 
 function sortmaps(a, b) {
     'use strict';
-    var x0 = a['X coord'],
-        x1 = b['X coord'],
-        y0 = a['Z coord'],
-        y1 = b['Z coord'],
-        x0Diff = x0 - viewCenter.x,
-        y0Diff = y0 - viewCenter.y,
-        x1Diff = x1 - viewCenter.x,
-        y1Diff = y1 - viewCenter.y,
-        dist0 = Math.sqrt(x0Diff * x0Diff + y0Diff * y0Diff),
-        dist1 = Math.sqrt(x1Diff * x1Diff + y1Diff * y1Diff);
-    // put things below a x = -y diagonal first
-    if (x0Diff > -y0Diff) {
-        dist0 = -dist0;
+    if (Math.abs(a['X coord'] - b['X coord']) >
+            Math.abs(a['Z coord'] - b['Z coord'])) {
+        return b['X coord'] - a['X coord'];
     }
-    if (x1Diff > -y1Diff) {
-        dist1 = -dist1;
-    }
-    return dist0 - dist1;
+    // else
+    return b['Z coord'] - a['Z coord'];
 }
 
 document.body.onmouseup = function (e) {
@@ -90,10 +98,9 @@ document.body.onmouseup = function (e) {
         isDown = false;
         last = {x: e.pageX - canvas.offsetLeft - startCoords.x,
                 y: e.pageY - canvas.offsetTop - startCoords.y};
-        viewCenter = {x: (canvas.width / 2 - last.x) / scale,
-                      y: (canvas.height / 2 - last.y) / scale};
         // sort maps by their distance from the view center
         mapArray.sort(sortmaps);
+        needUpdate = true;
     }
 };
 
@@ -147,6 +154,7 @@ function mapDataReceived() {
             ctx.setTransform(scale, 0, 0, scale, last.x, last.y);
             // sort maps by their distance from the view center
             mapArray.sort(sortmaps);
+            needUpdate = true;
             setInterval(drawMap, 100); // set the animation into motion
         }
     }
