@@ -2,6 +2,7 @@ var httpRequest,
     mapData,
     mapArray = [],
     canvas = document.getElementById("mapCanvas"),
+    coordDisplay = document.getElementById("coorddisplay"),
     ctx = canvas.getContext("2d"),
     startCoords = {x: 0, y: 0},
     last = {x: 0, y: 0},
@@ -59,12 +60,18 @@ function drawMap() {
 document.body.onmousemove = function (e) {
     'use strict';
     var xVal = e.pageX - canvas.offsetLeft - startCoords.x,
-        yVal = e.pageY - canvas.offsetTop - startCoords.y;
+        yVal = e.pageY - canvas.offsetTop - startCoords.y,
+        mouseX,
+        mouseY;
     if (isDown) {
         ctx.setTransform(scale, 0, 0, scale, xVal, yVal);
         viewCenter = {x: (canvas.width / 2 - xVal) / scale,
                       y: (canvas.height / 2 - yVal) / scale};
         needUpdate = true;
+    } else {
+        mouseX = Math.round((e.pageX - canvas.offsetLeft - last.x) / scale);
+        mouseY = Math.round((e.pageY - canvas.offsetTop - last.y) / scale);
+        coordDisplay.innerHTML = "x: " + mouseX + " z: " + mouseY;
     }
 };
 
@@ -81,6 +88,17 @@ canvas.onmousedown = function (e) {
                    y: e.pageY - canvas.offsetTop - last.y};
 };
 
+document.body.onmouseup = function (e) {
+    'use strict';
+    // check that the click started on the canvas
+    if (isDown) {
+        isDown = false;
+        last = {x: e.pageX - canvas.offsetLeft - startCoords.x,
+                y: e.pageY - canvas.offsetTop - startCoords.y};
+        needUpdate = true;
+    }
+};
+
 function sortmaps(a, b) {
     'use strict';
     if (Math.abs(a['X coord'] - b['X coord']) >
@@ -90,19 +108,6 @@ function sortmaps(a, b) {
     // else
     return b['Z coord'] - a['Z coord'];
 }
-
-document.body.onmouseup = function (e) {
-    'use strict';
-    // check that the click started on the canvas
-    if (isDown) {
-        isDown = false;
-        last = {x: e.pageX - canvas.offsetLeft - startCoords.x,
-                y: e.pageY - canvas.offsetTop - startCoords.y};
-        // sort maps by their distance from the view center
-        mapArray.sort(sortmaps);
-        needUpdate = true;
-    }
-};
 
 function mapDataReceived() {
     'use strict';
