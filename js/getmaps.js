@@ -1,11 +1,10 @@
-var httpRequest,
-    mapData,
-    mapArray = [],
+var mapArray = [],
+    features = {},
     canvas = document.getElementById("mapCanvas"),
     coordDisplay = document.getElementById("coorddisplay"),
     ctx = canvas.getContext("2d"),
-    startCoords = {x: 0, y: 0},
-    last = {x: 0, y: 0},
+    startTranslation = {x: 0, y: 0},
+    lastTranslation = {x: 0, y: 0},
     viewCenter = {x: 0, y: 0},
     isDown = false,
     scale = 1,
@@ -59,19 +58,20 @@ function drawMap() {
 
 document.body.onmousemove = function (e) {
     'use strict';
-    var xVal = e.pageX - canvas.offsetLeft - startCoords.x,
-        yVal = e.pageY - canvas.offsetTop - startCoords.y,
-        mouseX,
-        mouseY;
+    var newTranslation = {x: 0, y: 0},
+        mousePos = {x: 0, y: 0};
     if (isDown) {
-        ctx.setTransform(scale, 0, 0, scale, xVal, yVal);
-        viewCenter = {x: (canvas.width / 2 - xVal) / scale,
-                      y: (canvas.height / 2 - yVal) / scale};
+        newTranslation = {x: e.pageX - canvas.offsetLeft - startTranslation.x,
+                          y: e.pageY - canvas.offsetTop - startTranslation.y};
+        ctx.setTransform(scale, 0, 0, scale, newTranslation.x, newTranslation.y);
+        viewCenter = {x: (canvas.width / 2 - newTranslation.x) / scale,
+                      y: (canvas.height / 2 - newTranslation.y) / scale};
         needUpdate = true;
+    // update cursor map coordinates when not panning (they don't change while panning)
     } else {
-        mouseX = Math.round((e.pageX - canvas.offsetLeft - last.x) / scale);
-        mouseY = Math.round((e.pageY - canvas.offsetTop - last.y) / scale);
-        coordDisplay.innerHTML = "x: " + mouseX + " z: " + mouseY;
+        mousePos = {x: Math.round((e.pageX - canvas.offsetLeft - lastTranslation.x) / scale),
+                    y: Math.round((e.pageY - canvas.offsetTop - lastTranslation.y) / scale)};
+        coordDisplay.innerHTML = "x: " + mousePos.x + " z: " + mousePos.y;
     }
 };
 
@@ -80,12 +80,12 @@ canvas.onmousedown = function (e) {
     // check this in case the cursor was released outside the document
     // in which case the event would have been missed
     if (isDown) {
-        last = {x: e.pageX - canvas.offsetLeft - startCoords.x,
-                y: e.pageY - canvas.offsetTop - startCoords.y};
+        lastTranslation = {x: e.pageX - canvas.offsetLeft - startTranslation.x,
+                y: e.pageY - canvas.offsetTop - startTranslation.y};
     }
     isDown = true;
-    startCoords = {x: e.pageX - canvas.offsetLeft - last.x,
-                   y: e.pageY - canvas.offsetTop - last.y};
+    startTranslation = {x: e.pageX - canvas.offsetLeft - lastTranslation.x,
+                   y: e.pageY - canvas.offsetTop - lastTranslation.y};
 };
 
 document.body.onmouseup = function (e) {
@@ -93,8 +93,8 @@ document.body.onmouseup = function (e) {
     // check that the click started on the canvas
     if (isDown) {
         isDown = false;
-        last = {x: e.pageX - canvas.offsetLeft - startCoords.x,
-                y: e.pageY - canvas.offsetTop - startCoords.y};
+        lastTranslation = {x: e.pageX - canvas.offsetLeft - startTranslation.x,
+                y: e.pageY - canvas.offsetTop - startTranslation.y};
         needUpdate = true;
     }
 };
@@ -109,7 +109,7 @@ function sortmaps(a, b) {
     return b['Z coord'] - a['Z coord'];
 }
 
-function mapDataReceived() {
+function mapDataReceived(mapRequest) {
     'use strict';
     var curX,
         curY,
@@ -117,52 +117,55 @@ function mapDataReceived() {
         maxY = -Infinity,
         minX = Infinity,
         minY = Infinity,
+        mapData,
         mapName,
         map;
-    if (httpRequest.readyState === 4) {
-        if (httpRequest.status === 200) {
-            // process json object
-            mapData = JSON.parse(httpRequest.responseText);
-            // determine the center of 
-            for (mapName in mapData.results) {
-                if (mapData.results.hasOwnProperty(mapName)) {
-                    map = mapData.results[mapName].printouts;
-                    mapArray.push(map);
-                    curX = map['X coord'][0];
-                    curY = map['Z coord'][0];
-                    if (curX > maxX) {
-                        maxX = curX;
-                    }
-                    if (curX < minX) {
-                        minX = curX;
-                    }
-                    if (curY > maxY) {
-                        maxY = curY;
-                    }
-                    if (curY < minY) {
-                        minY = curY;
-                    }
-                }
+        // mapRequest = httpRequests.maps;
+    // process json object
+    mapData = JSON.parse(mapRequest.responseText);
+    // determine the center of 
+    for (mapName in mapData.results) {
+        if (mapData.results.hasOwnProperty(mapName)) {
+            map = mapData.results[mapName].printouts;
+            mapArray.push(map);
+            curX = map['X coord'][0];
+            curY = map['Z coord'][0];
+            if (curX > maxX) {
+                maxX = curX;
             }
-            // coordinates were based on map center, adjust for edge
-            maxX += mapAdjust;
-            maxY += mapAdjust;
-            minX -= mapAdjust;
-            minY -= mapAdjust;
-            viewCenter.x = (minX + maxX) / 2;
-            viewCenter.y = (minY + maxY) / 2;
-            // scale so the whole map fits
-            scale = Math.max(canvas.width, canvas.height) /
-                    Math.max(maxX - minX, maxY - minY);
-            last = {x: canvas.width / 2 - viewCenter.x * scale,
-                    y: canvas.height / 2 - viewCenter.y * scale};
-            ctx.setTransform(scale, 0, 0, scale, last.x, last.y);
-            // sort maps by their distance from the view center
-            mapArray.sort(sortmaps);
-            needUpdate = true;
-            setInterval(drawMap, 100); // set the animation into motion
+            if (curX < minX) {
+                minX = curX;
+            }
+            if (curY > maxY) {
+                maxY = curY;
+            }
+            if (curY < minY) {
+                minY = curY;
+            }
         }
     }
+    // coordinates were based on map center, adjust for edge
+    maxX += mapAdjust;
+    maxY += mapAdjust;
+    minX -= mapAdjust;
+    minY -= mapAdjust;
+    viewCenter.x = (minX + maxX) / 2;
+    viewCenter.y = (minY + maxY) / 2;
+    // scale so the whole map fits
+    scale = Math.max(canvas.width, canvas.height) /
+            Math.max(maxX - minX, maxY - minY);
+    lastTranslation = {x: canvas.width / 2 - viewCenter.x * scale,
+            y: canvas.height / 2 - viewCenter.y * scale};
+    ctx.setTransform(scale, 0, 0, scale, lastTranslation.x, lastTranslation.y);
+    // sort maps by their distance from the view center
+    mapArray.sort(sortmaps);
+    needUpdate = true;
+    setInterval(drawMap, 100); // set the animation into motion
+}
+
+function structureDataRecieved(structureRequest) {
+    'use strict';
+    features.structures = JSON.parse(structureRequest.responseText);
 }
 
 // Special:Ask uses dashes instead of percent signs to encode special chars
@@ -184,25 +187,9 @@ function encodeQuery(rawQuery) {
     return encodedQuery;
 }
 
-document.getElementById("getmapdata").onclick = function () {
+function createHttpRequest() {
     'use strict';
-    // define the query to send to semantic mediawiki
-    var fetchdataurl = 'http://dogtato.net/minecraft/index.php',
-        fetchdatafunc = 'title=Special:Ask/',
-        query = [
-            '[[Category:Maps]]',
-            '?x coord',
-            '?z coord',
-            '?image location',
-            'format=json',
-            'searchlabel=JSON output',
-            'prettyprint=yes',
-            'offset=0',
-            'sort=x coord',
-            'order=DESC'
-        ].join('\n'),
-        reqData = fetchdatafunc + encodeQuery(query);
-
+    var httpRequest;
     // create the httpRequest
     if (window.XMLHttpRequest) { // Mozilla, Safari, ...
         httpRequest = new XMLHttpRequest();
@@ -218,10 +205,76 @@ document.getElementById("getmapdata").onclick = function () {
             }
         }
     }
-    // configure and send the request
-    httpRequest.onreadystatechange = mapDataReceived;
-    httpRequest.open('POST', fetchdataurl);
-    httpRequest.setRequestHeader('Content-Type',
-        'application/x-www-form-urlencoded');
-    httpRequest.send(reqData);
+    return httpRequest;
+}
+
+document.getElementById("getmapdata").onclick = function () {
+    'use strict';
+    // define the query to send to semantic mediawiki
+    var fetchdataurl = 'http://dogtato.net/minecraft/index.php',
+        fetchdatafunc = 'title=Special:Ask/',
+        query = [
+            '[[Category:Maps]]',
+            '?x coord',
+            '?z coord',
+            '?image location',
+            'format=json',
+            'searchlabel=JSON output',
+            'prettyprint=yes',
+            'offset=0'
+        ].join('\n'),
+        reqData = fetchdatafunc + encodeQuery(query),
+        mapRequest;
+
+    // create the httpRequest
+    mapRequest = createHttpRequest();
+    if (mapRequest) {
+        // configure and send the request
+        mapRequest.onreadystatechange = function () {
+            if (mapRequest.readyState === 4) {
+                if (mapRequest.status === 200) {
+                    mapDataReceived(mapRequest);
+                }
+            }
+        };
+        mapRequest.open('POST', fetchdataurl);
+        mapRequest.setRequestHeader('Content-Type',
+            'application/x-www-form-urlencoded');
+        mapRequest.send(reqData);
+    }
+};
+
+document.getElementById("structureToggle").onclick = function (checkbox) {
+    'use strict';
+    // define the query to send to semantic mediawiki
+    var fetchdataurl = 'http://dogtato.net/minecraft/index.php',
+        fetchdatafunc = 'title=Special:Ask/',
+        query = [
+            '[[Category:Structures]]',
+            '?x coord',
+            '?z coord',
+            'format=json',
+            'searchlabel=JSON output',
+            'prettyprint=yes',
+            'offset=0'
+        ].join('\n'),
+        reqData = fetchdatafunc + encodeQuery(query),
+        structureRequest;
+    if (checkbox.checked) {
+        structureRequest = createHttpRequest();
+        if (structureRequest) {
+            // configure and send the request
+            structureRequest.onreadystatechange = function () {
+                if (structureRequest.readyState === 4) {
+                    if (structureRequest.status === 200) {
+                        structureDataRecieved(structureRequest);
+                    }
+                }
+            };
+            structureRequest.open('POST', fetchdataurl);
+            structureRequest.setRequestHeader('Content-Type',
+                'application/x-www-form-urlencoded');
+            structureRequest.send(reqData);
+        }
+    }
 };
