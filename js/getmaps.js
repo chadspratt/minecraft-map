@@ -1,5 +1,7 @@
 var mapArray = [],
+    featureTree = {},
     features = {},
+    featureSymbols = {},
     canvas = document.getElementById('mapCanvas'),
     coordDisplay = document.getElementById('coorddisplay'),
     ctx = canvas.getContext('2d'),
@@ -120,7 +122,7 @@ function sortMaps(a, b) {
     return b['Z coord'] - a['Z coord'];
 }
 
-function mapDataReceived(mapRequest) {
+function processMapData(mapRequest) {
     'use strict';
     var curX,
         curY,
@@ -178,13 +180,8 @@ function mapDataReceived(mapRequest) {
     setInterval(drawMap, 100); // set the animation into motion
 }
 
-function structureDataRecieved(structureRequest) {
-    'use strict';
-    var debugArea = document.getElementById('debugarea');
-    features.structures = JSON.parse(structureRequest.responseText);
-}
-
 // Special:Ask uses dashes instead of percent signs to encode special chars
+// MOVE TO PHP
 function encodeQuery(rawQuery) {
     'use strict';
     var encodedQuery = rawQuery;
@@ -227,29 +224,18 @@ function createHttpRequest() {
 document.getElementById('getmapdata').onclick = function getMapData() {
     'use strict';
     // define the query to send to semantic mediawiki
-    var fetchdataurl = 'http://dogtato.net/minecraft/index.php',
-        fetchdatafunc = 'title=Special:Ask/',
-        query = [
-            '[[Category:Maps]]',
-            '?x coord',
-            '?z coord',
-            '?image location',
-            'format=json',
-            'searchlabel=JSON output',
-            'prettyprint=yes',
-            'offset=0'
-        ].join('\n'),
-        reqData = fetchdatafunc + encodeQuery(query),
+    var fetchdataurl = 'http://dogtato.net/mcmap/php/mapData.php',
+        reqData = 'action=get&category=maps',
         mapRequest;
 
     // create the httpRequest
     mapRequest = createHttpRequest();
     if (mapRequest) {
         // configure and send the request
-        mapRequest.onreadystatechange = function processMapData() {
+        mapRequest.onreadystatechange = function mapDataReceived() {
             if (mapRequest.readyState === 4) {
                 if (mapRequest.status === 200) {
-                    mapDataReceived(mapRequest);
+                    processMapData(mapRequest);
                 }
             }
         };
@@ -259,6 +245,12 @@ document.getElementById('getmapdata').onclick = function getMapData() {
         mapRequest.send(reqData);
     }
 };
+
+function processStructureData(structureRequest) {
+    'use strict';
+    var debugArea = document.getElementById('debugarea');
+    features.structures = JSON.parse(structureRequest.responseText);
+}
 
 document.getElementById('structureToggle').onclick = function getStructureData(checkbox) {
     'use strict';
@@ -281,10 +273,10 @@ document.getElementById('structureToggle').onclick = function getStructureData(c
         structureRequest = createHttpRequest();
         if (structureRequest) {
             // configure and send the request
-            structureRequest.onreadystatechange = function processStructureData() {
+            structureRequest.onreadystatechange = function structureDataRecieved() {
                 if (structureRequest.readyState === 4) {
                     if (structureRequest.status === 200) {
-                        structureDataRecieved(structureRequest);
+                        processStructureData(structureRequest);
                     }
                 }
             };
@@ -295,3 +287,94 @@ document.getElementById('structureToggle').onclick = function getStructureData(c
         }
     }
 };
+
+// move to php
+function traverseCategory(categoryName) {
+    'use strict';
+    // define the query to send to semantic mediawiki
+    var fetchdataurl = 'http://dogtato.net/minecraft/index.php',
+        fetchdatafunc = 'title=Special:Ask/',
+        treeDataQuery = [
+            '[[Subcategory of::' + categoryName + ']]',
+            '?icon',
+            // '?x coord',
+            // '?z coord',
+            'format=json',
+            'searchlabel=JSON output',
+            'prettyprint=yes',
+            'offset=0'
+        ].join('\n'),
+        reqTreeData = fetchdatafunc + encodeQuery(treeDataQuery),
+        featureTreeRequest = createHttpRequest();
+    if (featureTreeRequest) {
+        featureTreeRequest.onreadystatechange = function featureTreeDataRecieved() {
+            if (featureTreeRequest.readyState === 4) {
+                if (featureTreeRequest.status === 200) {
+                    processFeatureTreeData(featureTreeRequest, featureTree);
+                }
+            }
+        };
+        featureTreeRequest.open('POST', fetchdataurl);
+        featureTreeRequest.setRequestHeader('Content-Type',
+            'application/x-www-form-urlencoded');
+        featureTreeRequest.send(reqTreeData);
+    }
+
+}
+
+// move to php
+// featureSymbols
+// features
+// parent is the featureTree object or a ((great )*grand){0,1}child property of it
+function processFeatureTreeData(featureTreeRequest, parent) {
+    'use strict';
+    var treeData = JSON.parse(featureTreeRequest.responseText),
+        categoryName,
+        categoryIcon;
+
+    for (categoryName in treeData.results) {
+        if (treeData.results.hasOwnProperty(categoryName)) {
+            categoryIcon = treeData.results[categoryName].printouts.Icon[0];
+            // strip out 'category:'
+            categoryName = categoryName.split(':')[1];
+            featureSymbols.categoryName = categoryIcon;
+            parent.categoryName = {};
+            traverseCategory(categoryName, parent.categoryName);
+        }
+    }
+}
+
+// move to php
+function getFeatureTree() {
+    'use strict';
+    // define the query to send to semantic mediawiki
+    var fetchdataurl = 'http://dogtato.net/minecraft/index.php',
+        fetchdatafunc = 'title=Special:Ask/',
+        treeDataQuery = [
+            '[[:Category:Features]]',
+            '?icon',
+            'format=json',
+            'searchlabel=JSON output',
+            'prettyprint=yes',
+            'offset=0'
+        ].join('\n'),
+        reqTreeData = fetchdatafunc + encodeQuery(treeDataQuery),
+        featureTreeRequest = createHttpRequest();
+    if (featureTreeRequest) {
+        featureTreeRequest.onreadystatechange = function featureTreeDataRecieved() {
+            if (featureTreeRequest.readyState === 4) {
+                if (featureTreeRequest.status === 200) {
+                    processFeatureTreeData(featureTreeRequest, featureTree);
+                }
+            }
+        };
+        featureTreeRequest.open('POST', fetchdataurl);
+        featureTreeRequest.setRequestHeader('Content-Type',
+            'application/x-www-form-urlencoded');
+        featureTreeRequest.send(reqTreeData);
+    }
+}
+
+// document.onload = function initMapData() {
+//     getFeatureTree();
+// }
