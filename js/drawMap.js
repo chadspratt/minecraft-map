@@ -12,50 +12,107 @@ var mapArray = [],
     scale = 1,
     mapSize = 128 * 8,
     mapAdjust = mapSize / 2,
+    featureSize = 10,
+    featureAdjust = featureSize / 2,
     needUpdate = false,
     mapWidth = canvas.width / scale,
     mapHeight = canvas.height / scale;
 
-function drawMap() {
+function clearMap() {
+    'use strict';
+    // clear canvas with a white background
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // reapply scale and translation
+    ctx.restore();
+}
+
+function drawMaps(boundary) {
     'use strict';
     var x,
         y,
         img,
         map,
-        i,
-        // bounds of visible area
-        left,
-        right,
-        top,
-        bottom;
-    // only redraw when needed (transformation changed, features added)
-    if (needUpdate) {
-        left = viewCenter.x - mapWidth / 2;
-        right = left + mapWidth;
-        top = viewCenter.y - mapHeight / 2;
-        bottom = top + mapHeight;
-        // clear canvas with a white background
-        ctx.save();
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        // reapply scale and translation
-        ctx.restore();
-        // draw maps
-        for (i = 0; i < mapArray.length; i += 1) {
-            map = mapArray[i];
-            // coords are map centers, need top left corners
-            x = map['X coord'] - mapAdjust;
-            // n/s is measured as z in minecraft
-            y = map['Z coord'] - mapAdjust;
-            // check that map will be visible
-            if (x < right && x > left - mapSize
-                    && y < bottom && y > top - mapSize) {
-                img = document.createElement('img');
-                img.src = map['Image location'];
-                ctx.drawImage(img, x, y, mapSize, mapSize);
+        i;
+    for (i = 0; i < mapArray.length; i += 1) {
+        map = mapArray[i];
+        // coords are map centers, subtract to get top left corners
+        x = map['X coord'] - mapAdjust;
+        // n/s is measured as z in minecraft
+        y = map['Z coord'] - mapAdjust;
+        // check that map will be visible
+        if (boundary.contains(x, y, mapSize)) {
+            img = document.createElement('img');
+            img.src = map['Image location'];
+            ctx.drawImage(img, x, y, mapSize, mapSize);
+        }
+    }
+}
+
+function drawFeatures(boundary) {
+    'use strict';
+    var categoryName,
+        features,
+        featureName,
+        feature,
+        x,
+        y,
+        img,
+        drawSize = featureSize / scale;
+    for (categoryName in categoryFeatures) {
+        if (categoryFeatures.hasOwnProperty(categoryName)) {
+            img = document.createElement('img');
+            img.src = categoryIcons[categoryName];
+            features = categoryFeatures[categoryName];
+            for (featureName in features) {
+                if (features.hasOwnProperty(featureName)) {
+                    feature = features[featureName];
+                    x = feature['X coord'] - featureAdjust;
+                    y = feature['Z coord'] - featureAdjust;
+                    if (boundary.contains(x, y, drawSize)) {
+                        ctx.drawImage(img, x, y, drawSize, drawSize);
+                    }
+                }
             }
         }
+    }
+}
+
+function VisibleBounds(left, right, top, bottom) {
+    'use strict';
+    this.left = left;
+    this.right = right;
+    this.top = top;
+    this.bottom = bottom;
+    this.contains = function contains(x, y, objectSize) {
+        return (x < this.right &&
+                x > this.left - objectSize &&
+                y < this.bottom &&
+                y > this.top - objectSize);
+    };
+}
+
+function drawMap() {
+    'use strict';
+    var left,
+        right,
+        top,
+        bottom,
+        boundary;
+    // visible bounds
+    left = viewCenter.x - mapWidth / 2;
+    right = left + mapWidth;
+    top = viewCenter.y - mapHeight / 2;
+    bottom = top + mapHeight;
+
+    boundary = new VisibleBounds(left, right, top, bottom);
+    // only redraw when needed (transformation changed, features added)
+    if (needUpdate) {
+        clearMap();
+        drawMaps(boundary);
+        drawFeatures(boundary);
         needUpdate = false;
     }
 }
@@ -177,8 +234,6 @@ function processMapData(mapData) {
     lastTranslation = {x: canvas.width / 2 - viewCenter.x * scale,
             y: canvas.height / 2 - viewCenter.y * scale};
     ctx.setTransform(scale, 0, 0, scale, lastTranslation.x, lastTranslation.y);
-    needUpdate = true;
-    setInterval(drawMap, 100); // set the animation into motion
 }
 
 function hierarchyMember() {
@@ -226,6 +281,8 @@ function processData(dataRequest) {
         data = JSON.parse(dataRequest.responseText);
     processMapData(data.maps);
     processCategory('Features', data.features, data.features.icon);
+    needUpdate = true;
+    setInterval(drawMap, 100); // set the animation into motion
 }
 
 function createHttpRequest() {
