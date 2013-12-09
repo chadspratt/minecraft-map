@@ -1,7 +1,7 @@
 var mapArray = [],
-    featureTree = {},
-    features = {},
-    featureSymbols = {},
+    categoryHierarchy = {},
+    categoryFeatures = {},
+    categoryIcons = {},
     canvas = document.getElementById('mapCanvas'),
     coordDisplay = document.getElementById('coorddisplay'),
     ctx = canvas.getContext('2d'),
@@ -112,17 +112,23 @@ document.body.onmouseup = function mouseButtonReleased(e) {
     }
 };
 
+// orders maps from SE to NW, so that NW will be drawn on top of SE
+// this is to cover "map_x" text in the top left corner of each map
 function sortMaps(a, b) {
     'use strict';
+    var comparator = 0;
+    // compare based on the coordinates with a bigger difference
     if (Math.abs(a['X coord'] - b['X coord']) >
             Math.abs(a['Z coord'] - b['Z coord'])) {
-        return b['X coord'] - a['X coord'];
+        // sort descending
+        comparator =  b['X coord'] - a['X coord'];
+    } else {
+        comparator = b['Z coord'] - a['Z coord'];
     }
-    // else
-    return b['Z coord'] - a['Z coord'];
+    return comparator;
 }
 
-function processMapData(mapRequest) {
+function processMapData(mapData) {
     'use strict';
     var curX,
         curY,
@@ -130,20 +136,16 @@ function processMapData(mapRequest) {
         maxY = -Infinity,
         minX = Infinity,
         minY = Infinity,
-        mapData,
         mapName,
         map;
-        // mapRequest = httpRequests.maps;
-    // process json object
-    mapData = JSON.parse(mapRequest.responseText);
     // determine the center of all maps
-    for (mapName in mapData.results) {
-        if (mapData.results.hasOwnProperty(mapName)) {
-            map = mapData.results[mapName].printouts;
+    for (mapName in mapData) {
+        if (mapData.hasOwnProperty(mapName)) {
+            map = mapData[mapName];
             // store them in a convenient array for drawing later
             mapArray.push(map);
-            curX = map['X coord'][0];
-            curY = map['Z coord'][0];
+            curX = map['X coord'];
+            curY = map['Z coord'];
             if (curX > maxX) {
                 maxX = curX;
             }
@@ -158,6 +160,7 @@ function processMapData(mapRequest) {
             }
         }
     }
+    mapArray.sort(sortMaps);
     // coordinates were based on map center, adjust for edge
     maxX += mapAdjust;
     maxY += mapAdjust;
@@ -174,30 +177,55 @@ function processMapData(mapRequest) {
     lastTranslation = {x: canvas.width / 2 - viewCenter.x * scale,
             y: canvas.height / 2 - viewCenter.y * scale};
     ctx.setTransform(scale, 0, 0, scale, lastTranslation.x, lastTranslation.y);
-    // sort maps by their distance from the view center
-    mapArray.sort(sortMaps);
     needUpdate = true;
     setInterval(drawMap, 100); // set the animation into motion
 }
 
-// Special:Ask uses dashes instead of percent signs to encode special chars
-// MOVE TO PHP
-function encodeQuery(rawQuery) {
+function hierarchyMember() {
     'use strict';
-    var encodedQuery = rawQuery;
-    // replace '[' with '-5B'
-    encodedQuery = encodedQuery.replace(/\[/g, '-5B');
-    // replace ']' with '-5D'
-    encodedQuery = encodedQuery.replace(/\]/g, '-5D');
-    // replace '?' with '-3F'
-    encodedQuery = encodedQuery.replace(/\?/g, '-3F');
-    // replace spaces with '-20'
-    encodedQuery = encodedQuery.replace(/ /g, '-20');
-    // replace '=' with '-3D'
-    encodedQuery = encodedQuery.replace(/\=/g, '-3D');
-    // replace newlines with '/'
-    encodedQuery = encodedQuery.replace(/\n/g, '/');
-    return encodedQuery;
+    return {'parentCat': null,
+            'children': []};
+}
+
+function processCategory(categoryName, category, parentIcon) {
+    'use strict';
+    var subcategory;
+    // set category icon
+    if (category.icon === null) {
+        categoryIcons[categoryName] = parentIcon;
+    } else {
+        categoryIcons[categoryName] = category.icon;
+    }
+    // set category features
+    categoryFeatures[categoryName] = category.features;
+    // create hierarchy entry for the root category
+    if (!categoryHierarchy.hasOwnProperty(categoryName)) {
+        categoryHierarchy[categoryName] = hierarchyMember();
+    }
+    for (subcategory in category.children) {
+        if (category.children.hasOwnProperty(subcategory)) {
+            // add each subcategory as a child of the current category
+            categoryHierarchy[categoryName].children.push(subcategory);
+            // create hierarchy entries for subcategories
+            if (!categoryHierarchy.hasOwnProperty(subcategory)) {
+                categoryHierarchy[subcategory] = hierarchyMember();
+            }
+            // add the current category as a parent of each subcategory
+            categoryHierarchy[subcategory].parentCat = categoryName;
+            // recurse
+            processCategory(subcategory,
+                            category.children[subcategory],
+                            categoryIcons[categoryName]);
+        }
+    }
+}
+
+function processData(dataRequest) {
+    'use strict';
+    var debugArea = document.getElementById('debugarea'),
+        data = JSON.parse(dataRequest.responseText);
+    processMapData(data.maps);
+    processCategory('Features', data.features, data.features.icon);
 }
 
 function createHttpRequest() {
@@ -225,7 +253,7 @@ document.getElementById('getmapdata').onclick = function getMapData() {
     'use strict';
     // define the query to send to semantic mediawiki
     var fetchdataurl = 'http://dogtato.net/mcmap/php/mapData.php',
-        reqData = 'action=get&category=maps',
+        reqData = 'action=get',
         mapRequest;
 
     // create the httpRequest
@@ -235,7 +263,7 @@ document.getElementById('getmapdata').onclick = function getMapData() {
         mapRequest.onreadystatechange = function mapDataReceived() {
             if (mapRequest.readyState === 4) {
                 if (mapRequest.status === 200) {
-                    processMapData(mapRequest);
+                    processData(mapRequest);
                 }
             }
         };
@@ -245,136 +273,3 @@ document.getElementById('getmapdata').onclick = function getMapData() {
         mapRequest.send(reqData);
     }
 };
-
-function processStructureData(structureRequest) {
-    'use strict';
-    var debugArea = document.getElementById('debugarea');
-    features.structures = JSON.parse(structureRequest.responseText);
-}
-
-document.getElementById('structureToggle').onclick = function getStructureData(checkbox) {
-    'use strict';
-    // define the query to send to semantic mediawiki
-    var fetchdataurl = 'http://dogtato.net/minecraft/index.php',
-        fetchdatafunc = 'title=Special:Ask/',
-        query = [
-            '[[Subcategory of::Features]]',
-            '?icon',
-            // '?x coord',
-            // '?z coord',
-            'format=json',
-            'searchlabel=JSON output',
-            'prettyprint=yes',
-            'offset=0'
-        ].join('\n'),
-        reqData = fetchdatafunc + encodeQuery(query),
-        structureRequest;
-    if (checkbox.checked) {
-        structureRequest = createHttpRequest();
-        if (structureRequest) {
-            // configure and send the request
-            structureRequest.onreadystatechange = function structureDataRecieved() {
-                if (structureRequest.readyState === 4) {
-                    if (structureRequest.status === 200) {
-                        processStructureData(structureRequest);
-                    }
-                }
-            };
-            structureRequest.open('POST', fetchdataurl);
-            structureRequest.setRequestHeader('Content-Type',
-                'application/x-www-form-urlencoded');
-            structureRequest.send(reqData);
-        }
-    }
-};
-
-// move to php
-function traverseCategory(categoryName) {
-    'use strict';
-    // define the query to send to semantic mediawiki
-    var fetchdataurl = 'http://dogtato.net/minecraft/index.php',
-        fetchdatafunc = 'title=Special:Ask/',
-        treeDataQuery = [
-            '[[Subcategory of::' + categoryName + ']]',
-            '?icon',
-            // '?x coord',
-            // '?z coord',
-            'format=json',
-            'searchlabel=JSON output',
-            'prettyprint=yes',
-            'offset=0'
-        ].join('\n'),
-        reqTreeData = fetchdatafunc + encodeQuery(treeDataQuery),
-        featureTreeRequest = createHttpRequest();
-    if (featureTreeRequest) {
-        featureTreeRequest.onreadystatechange = function featureTreeDataRecieved() {
-            if (featureTreeRequest.readyState === 4) {
-                if (featureTreeRequest.status === 200) {
-                    processFeatureTreeData(featureTreeRequest, featureTree);
-                }
-            }
-        };
-        featureTreeRequest.open('POST', fetchdataurl);
-        featureTreeRequest.setRequestHeader('Content-Type',
-            'application/x-www-form-urlencoded');
-        featureTreeRequest.send(reqTreeData);
-    }
-
-}
-
-// move to php
-// featureSymbols
-// features
-// parent is the featureTree object or a ((great )*grand){0,1}child property of it
-function processFeatureTreeData(featureTreeRequest, parent) {
-    'use strict';
-    var treeData = JSON.parse(featureTreeRequest.responseText),
-        categoryName,
-        categoryIcon;
-
-    for (categoryName in treeData.results) {
-        if (treeData.results.hasOwnProperty(categoryName)) {
-            categoryIcon = treeData.results[categoryName].printouts.Icon[0];
-            // strip out 'category:'
-            categoryName = categoryName.split(':')[1];
-            featureSymbols.categoryName = categoryIcon;
-            parent.categoryName = {};
-            traverseCategory(categoryName, parent.categoryName);
-        }
-    }
-}
-
-// move to php
-function getFeatureTree() {
-    'use strict';
-    // define the query to send to semantic mediawiki
-    var fetchdataurl = 'http://dogtato.net/minecraft/index.php',
-        fetchdatafunc = 'title=Special:Ask/',
-        treeDataQuery = [
-            '[[:Category:Features]]',
-            '?icon',
-            'format=json',
-            'searchlabel=JSON output',
-            'prettyprint=yes',
-            'offset=0'
-        ].join('\n'),
-        reqTreeData = fetchdatafunc + encodeQuery(treeDataQuery),
-        featureTreeRequest = createHttpRequest();
-    if (featureTreeRequest) {
-        featureTreeRequest.onreadystatechange = function featureTreeDataRecieved() {
-            if (featureTreeRequest.readyState === 4) {
-                if (featureTreeRequest.status === 200) {
-                    processFeatureTreeData(featureTreeRequest, featureTree);
-                }
-            }
-        };
-        featureTreeRequest.open('POST', fetchdataurl);
-        featureTreeRequest.setRequestHeader('Content-Type',
-            'application/x-www-form-urlencoded');
-        featureTreeRequest.send(reqTreeData);
-    }
-}
-
-// document.onload = function initMapData() {
-//     getFeatureTree();
-// }

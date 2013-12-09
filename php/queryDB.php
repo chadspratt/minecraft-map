@@ -11,7 +11,7 @@ function get_json_from_sql($category) {
                                  "WHERE (f2.Date is null and " .
                                         "f1.Category = '$category')");
         if($result === FALSE) {
-            // for debugging
+            // for debugging, shouldn't ever happen
             echo $mysqli->error;
             return FALSE;
         }
@@ -21,12 +21,13 @@ function get_json_from_sql($category) {
         }
 }
 
-function add_json_to_sql($category, $json_data) {
+function add_json_to_sql($key, $json_data) {
     $mysqli = get_db_connection();
     $escaped_json = $mysqli->real_escape_string($json_data);
     $sql_query = "INSERT INTO features_json (Category, Data) " . 
-                 "VALUES('Maps', '$escaped_json')";
-    $res = $mysqli->query($sql_query);
-    printf("%d Row inserted.\n", $mysqli->affected_rows);
+                 "VALUES('$key', '$escaped_json')";
+    $mysqli->query($sql_query);
+    // debugging
+    // printf("%d Row inserted.\n", $mysqli->affected_rows);
 }
 ?>

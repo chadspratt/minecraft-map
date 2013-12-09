@@ -1,28 +1,26 @@
 <?php
-// get_maps()
-// get_subcategories($category)
+// get_data_json()
 include "queryWiki.php";
+// add_json_to_sql($json_string)
 // get_json_from_sql($category)
 include "queryDB.php";
 
-// work with either post or
+// work with either post or get
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     $action = $_GET["action"];
-    $category = $_GET["category"];
 }
 else {
     $action = $_POST["action"];
-    $category = $_POST["category"];
 }
 
 if ($action == "get") {
-    $result = get_json_from_sql($category);
-    echo $result;
+    echo get_json_from_sql("alldata");
 }
 else if ($action == "update") {
-    $maps_json = get_maps();
-    add_json_to_sql("maps", $maps_json);
-    // for debugging
-    echo $maps_json;
+    // get refreshed data from the wiki
+    $data_json = get_data_json();
+    // cache it in the database
+    add_json_to_sql("alldata", $data_json);
+    echo $data_json;
 }
 ?>
