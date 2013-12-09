@@ -199,7 +199,7 @@ function processMapData(mapData) {
     for (mapName in mapData) {
         if (mapData.hasOwnProperty(mapName)) {
             map = mapData[mapName];
-            // store them in a convenient array for drawing later
+            // store them in an array for ordered drawing later
             mapArray.push(map);
             curX = map['X coord'];
             curY = map['Z coord'];
@@ -218,7 +218,7 @@ function processMapData(mapData) {
         }
     }
     mapArray.sort(sortMaps);
-    // coordinates were based on map center, adjust for edge
+    // coordinates were for map center, adjust for edge
     maxX += mapAdjust;
     maxY += mapAdjust;
     minX -= mapAdjust;
@@ -226,8 +226,10 @@ function processMapData(mapData) {
     viewCenter.x = (minX + maxX) / 2;
     viewCenter.y = (minY + maxY) / 2;
     // scale so the whole map fits
-    scale = Math.max(canvas.width, canvas.height) /
-            Math.max(maxX - minX, maxY - minY);
+    scale = Math.min(canvas.width / (maxX - minX),
+                     canvas.height / (maxY - minY));
+    // scale = Math.max(canvas.width, canvas.height) /
+    //         Math.max(maxX - minX, maxY - minY);
     // update the width in map coordinates
     mapWidth = canvas.width / scale;
     mapHeight = canvas.height / scale;
