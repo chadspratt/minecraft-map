@@ -33,19 +33,20 @@ function query_wiki($query_array) {
 }
 
 function process_response($query_response) {
+    $query_items = NULL;
+
     $query_data = json_decode($query_response);
-    if ($query_data == NULL) {
-        return NULL;
-    }
-    $query_items = array();
-    foreach ($query_data->results as $item_name => $item) {
-        $query_items[$item_name] = array();
-        foreach ($item->printouts as $property_name => $property_value) {
-            if (is_array($property_value)) {
-                $query_items[$item_name][$property_name] = $property_value[0];
-            }
-            else {
-                $query_items[$item_name][$property_name] = $property_value;
+    if ($query_data != NULL) {
+        $query_items = array();
+        foreach ($query_data->results as $item_name => $item) {
+            $query_items[$item_name] = array();
+            foreach ($item->printouts as $property_name => $property_value) {
+                if (is_array($property_value)) {
+                    $query_items[$item_name][$property_name] = $property_value[0];
+                }
+                else {
+                    $query_items[$item_name][$property_name] = $property_value;
+                }
             }
         }
     }

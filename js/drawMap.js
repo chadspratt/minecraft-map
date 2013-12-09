@@ -80,7 +80,7 @@ function drawFeatures(boundary) {
     }
 }
 
-function VisibleBounds(left, right, top, bottom) {
+function Boundary(left, right, top, bottom) {
     'use strict';
     this.left = left;
     this.right = right;
@@ -107,7 +107,7 @@ function drawMap() {
     top = viewCenter.y - mapHeight / 2;
     bottom = top + mapHeight;
 
-    boundary = new VisibleBounds(left, right, top, bottom);
+    boundary = new Boundary(left, right, top, bottom);
     // only redraw when needed (transformation changed, features added)
     if (needUpdate) {
         clearMap();
