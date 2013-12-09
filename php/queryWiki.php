@@ -66,7 +66,7 @@ function get_features($category) {
     $feature_query = array("[[Category:$category]]",
                            "?x coord",
                            "?z coord",
-                           "?icon");
+                           "?Icon");
 
     $feature_response = query_wiki($feature_query);
     return process_response($feature_response);
@@ -74,7 +74,7 @@ function get_features($category) {
 
 function get_subcategories($category) {
     $subcat_query = array("[[Subcategory of::$category]]",
-                          "?icon");
+                          "?Icon");
     $subcat_response = query_wiki($subcat_query);
     return process_response($subcat_response);
 }
@@ -97,7 +97,7 @@ function get_children($category, &$known_categories) {
                 // recurse to traverse all the categories in the tree
                 $grandchildren = get_children($sub_name,
                                               $known_categories);
-                $children[$sub_name] = array("icon"=>$icon,
+                $children[$sub_name] = array("Icon"=>$icon,
                                              "features"=>$features,
                                              "children"=>$grandchildren);
             }
@@ -115,7 +115,7 @@ function get_data_json() {
     // get all the categories and their features
     $categories = array();
     $defaut_icon_query = array("[[:Category:Features]]",
-                               "?icon");
+                               "?Icon");
     $icon_result = process_response(query_wiki($defaut_icon_query));
     $icon = $icon_result["Category:Features"]["Icon"];
     $features = get_features("Features");
@@ -123,7 +123,7 @@ function get_data_json() {
     $known_categories = array();
     $children = get_children("Features", $known_categories);
     // store top level category "features"
-    $data["features"] = array("icon"=>$icon,
+    $data["features"] = array("Icon"=>$icon,
                               "features"=>$features,
                               "children"=>$children);
     return json_encode($data);

@@ -1,19 +1,16 @@
-var mapArray = [],
+var canvas = document.getElementById('mapCanvas'),
+    coordDisplay = document.getElementById('coorddisplay'),
+    ctx = canvas.getContext('2d'),
+    mapArray = [],
     categoryHierarchy = {},
     categoryFeatures = {},
     categoryIcons = {},
-    canvas = document.getElementById('mapCanvas'),
-    coordDisplay = document.getElementById('coorddisplay'),
-    ctx = canvas.getContext('2d'),
+    visibleFeatures = {},
     startTranslation = {x: 0, y: 0},
     lastTranslation = {x: 0, y: 0},
     viewCenter = {x: 0, y: 0},
     isDown = false,
     scale = 1,
-    mapSize = 128 * 8,
-    mapAdjust = mapSize / 2,
-    featureSize = 10,
-    featureAdjust = featureSize / 2,
     needUpdate = false,
     mapWidth = canvas.width / scale,
     mapHeight = canvas.height / scale;
@@ -29,50 +26,53 @@ function clearMap() {
     ctx.restore();
 }
 
-function drawMaps(boundary) {
+function drawMaps(visibleBoundary) {
     'use strict';
     var x,
         y,
         img,
-        map,
+        mapBoundary,
         i;
     for (i = 0; i < mapArray.length; i += 1) {
-        map = mapArray[i];
-        // coords are map centers, subtract to get top left corners
-        x = map['X coord'] - mapAdjust;
-        // n/s is measured as z in minecraft
-        y = map['Z coord'] - mapAdjust;
+        mapBoundary = mapArray[i];
+        x = mapBoundary.left;
+        y = mapBoundary.top;
         // check that map will be visible
-        if (boundary.contains(x, y, mapSize)) {
+        if (visibleBoundary.contains(mapBoundary)) {
             img = document.createElement('img');
-            img.src = map['Image location'];
-            ctx.drawImage(img, x, y, mapSize, mapSize);
+            img.src = mapBoundary.image;
+            ctx.drawImage(img, x, y, mapBoundary.width, mapBoundary.height);
         }
     }
 }
 
-function drawFeatures(boundary) {
+function drawFeatures(visibleBoundary) {
     'use strict';
     var categoryName,
-        features,
+        featureBoundaries,
         featureName,
-        feature,
+        featureBoundary,
         x,
         y,
-        img,
-        drawSize = featureSize / scale;
+        img;
+    // clear
+    visibleFeatures = {};
     for (categoryName in categoryFeatures) {
         if (categoryFeatures.hasOwnProperty(categoryName)) {
-            img = document.createElement('img');
-            img.src = categoryIcons[categoryName];
-            features = categoryFeatures[categoryName];
-            for (featureName in features) {
-                if (features.hasOwnProperty(featureName)) {
-                    feature = features[featureName];
-                    x = feature['X coord'] - featureAdjust;
-                    y = feature['Z coord'] - featureAdjust;
-                    if (boundary.contains(x, y, drawSize)) {
-                        ctx.drawImage(img, x, y, drawSize, drawSize);
+            featureBoundaries = categoryFeatures[categoryName];
+            for (featureName in featureBoundaries) {
+                if (featureBoundaries.hasOwnProperty(featureName)) {
+                    featureBoundary = featureBoundaries[featureName];
+                    if (visibleBoundary.contains(featureBoundary)) {
+                        img = document.createElement('img');
+                        img.src = featureBoundary.image;
+                        x = featureBoundary.left;
+                        y = featureBoundary.top;
+                        ctx.drawImage(img, x, y,
+                                      featureBoundary.width / scale,
+                                      featureBoundary.height / scale);
+                        // store all visible features for checking mouseover
+                        visibleFeatures[featureName] = featureBoundary;
                     }
                 }
             }
@@ -80,39 +80,45 @@ function drawFeatures(boundary) {
     }
 }
 
-function Boundary(left, right, top, bottom) {
+function Boundary(left, top, width, height, image) {
     'use strict';
     this.left = left;
-    this.right = right;
+    this.right = left + width;
     this.top = top;
-    this.bottom = bottom;
-    this.contains = function contains(x, y, objectSize) {
+    this.bottom = top + height;
+    this.width = width;
+    this.height = height;
+    this.image = image;
+    this.contains = function contains(boundary) {
+        return (boundary.left < this.right &&
+                boundary.right > this.left &&
+                boundary.top < this.bottom &&
+                boundary.bottom > this.top);
+    };
+    // for checking mouseover
+    this.containsPoint = function containsPoint(x, y) {
         return (x < this.right &&
-                x > this.left - objectSize &&
+                x > this.left &&
                 y < this.bottom &&
-                y > this.top - objectSize);
+                y > this.top);
     };
 }
 
 function drawMap() {
     'use strict';
     var left,
-        right,
         top,
-        bottom,
-        boundary;
-    // visible bounds
-    left = viewCenter.x - mapWidth / 2;
-    right = left + mapWidth;
-    top = viewCenter.y - mapHeight / 2;
-    bottom = top + mapHeight;
-
-    boundary = new Boundary(left, right, top, bottom);
+        mapBoundary;
     // only redraw when needed (transformation changed, features added)
     if (needUpdate) {
+        // visible bounds
+        left = viewCenter.x - mapWidth / 2;
+        top = viewCenter.y - mapHeight / 2;
+        mapBoundary = new Boundary(left, top, mapWidth, mapHeight, null);
+
         clearMap();
-        drawMaps(boundary);
-        drawFeatures(boundary);
+        drawMaps(mapBoundary);
+        drawFeatures(mapBoundary);
         needUpdate = false;
     }
 }
@@ -175,54 +181,53 @@ function sortMaps(a, b) {
     'use strict';
     var comparator = 0;
     // compare based on the coordinates with a bigger difference
-    if (Math.abs(a['X coord'] - b['X coord']) >
-            Math.abs(a['Z coord'] - b['Z coord'])) {
-        // sort descending
-        comparator =  b['X coord'] - a['X coord'];
+    if (Math.abs(a.left - b.left) >
+            Math.abs(a.top - b.top)) {
+        // sort descending (east to west)
+        comparator =  b.left - a.left;
     } else {
-        comparator = b['Z coord'] - a['Z coord'];
+        // sort descending (south to north)
+        comparator = b.top - a.top;
     }
     return comparator;
 }
 
 function processMapData(mapData) {
     'use strict';
-    var curX,
-        curY,
-        maxX = -Infinity,
+    var maxX = -Infinity,
         maxY = -Infinity,
         minX = Infinity,
         minY = Infinity,
+        mapSize = 128 * 8,
+        mapAdjust = mapSize / 2,
         mapName,
-        map;
+        map,
+        mapBoundary;
     // determine the center of all maps
     for (mapName in mapData) {
         if (mapData.hasOwnProperty(mapName)) {
             map = mapData[mapName];
+            mapBoundary = new Boundary(map['X coord'] - mapAdjust,
+                                       map['Z coord'] - mapAdjust,
+                                       mapSize, mapSize,
+                                       map['Image location']);
             // store them in an array for ordered drawing later
-            mapArray.push(map);
-            curX = map['X coord'];
-            curY = map['Z coord'];
-            if (curX > maxX) {
-                maxX = curX;
+            mapArray.push(mapBoundary);
+            if (mapBoundary.right > maxX) {
+                maxX = mapBoundary.right;
             }
-            if (curX < minX) {
-                minX = curX;
+            if (mapBoundary.left < minX) {
+                minX = mapBoundary.left;
             }
-            if (curY > maxY) {
-                maxY = curY;
+            if (mapBoundary.bottom > maxY) {
+                maxY = mapBoundary.bottom;
             }
-            if (curY < minY) {
-                minY = curY;
+            if (mapBoundary.top < minY) {
+                minY = mapBoundary.top;
             }
         }
     }
     mapArray.sort(sortMaps);
-    // coordinates were for map center, adjust for edge
-    maxX += mapAdjust;
-    maxY += mapAdjust;
-    minX -= mapAdjust;
-    minY -= mapAdjust;
     viewCenter.x = (minX + maxX) / 2;
     viewCenter.y = (minY + maxY) / 2;
     // scale so the whole map fits
@@ -238,26 +243,59 @@ function processMapData(mapData) {
     ctx.setTransform(scale, 0, 0, scale, lastTranslation.x, lastTranslation.y);
 }
 
-function hierarchyMember() {
+function processFeatures(features, categoryIcon) {
     'use strict';
-    return {'parentCat': null,
-            'children': []};
+    var featureName,
+        feature,
+        featureBoundary,
+        featureBoundaries = {},
+        featureSize = 10,
+        featureAdjust = featureSize / 2,
+        x,
+        y;
+    for (featureName in features) {
+        if (features.hasOwnProperty(featureName)) {
+            feature = features[featureName];
+            x = feature['X coord'];
+            // minecraft stores N/S as z
+            y = feature['Z coord'];
+            // ignore features without coordinates
+            if (x !== null && y !== null) {
+                if (feature.Icon === null) {
+                    feature.Icon = categoryIcon;
+                }
+                featureBoundary = new Boundary(feature['X coord'] - featureAdjust,
+                                               feature['Z coord'] - featureAdjust,
+                                               featureSize, featureSize,
+                                               feature.Icon);
+                featureBoundaries[featureName] = featureBoundary;
+            }
+        }
+    }
+    return featureBoundaries;
+}
+
+function HierarchyMember() {
+    'use strict';
+    this.parentCat = null;
+    this.children = [];
 }
 
 function processCategory(categoryName, category, parentIcon) {
     'use strict';
     var subcategory;
     // set category icon
-    if (category.icon === null) {
+    if (category.Icon === null) {
         categoryIcons[categoryName] = parentIcon;
     } else {
-        categoryIcons[categoryName] = category.icon;
+        categoryIcons[categoryName] = category.Icon;
     }
     // set category features
-    categoryFeatures[categoryName] = category.features;
+    categoryFeatures[categoryName] = processFeatures(category.features,
+                                                     categoryIcons[categoryName]);
     // create hierarchy entry for the root category
     if (!categoryHierarchy.hasOwnProperty(categoryName)) {
-        categoryHierarchy[categoryName] = hierarchyMember();
+        categoryHierarchy[categoryName] = new HierarchyMember();
     }
     for (subcategory in category.children) {
         if (category.children.hasOwnProperty(subcategory)) {
@@ -265,7 +303,7 @@ function processCategory(categoryName, category, parentIcon) {
             categoryHierarchy[categoryName].children.push(subcategory);
             // create hierarchy entries for subcategories
             if (!categoryHierarchy.hasOwnProperty(subcategory)) {
-                categoryHierarchy[subcategory] = hierarchyMember();
+                categoryHierarchy[subcategory] = new HierarchyMember();
             }
             // add the current category as a parent of each subcategory
             categoryHierarchy[subcategory].parentCat = categoryName;
@@ -281,8 +319,12 @@ function processData(dataRequest) {
     'use strict';
     var debugArea = document.getElementById('debugarea'),
         data = JSON.parse(dataRequest.responseText);
+    // clear the data structures for storing all the data
+    categoryIcons = {};
+    categoryFeatures = {};
+    categoryHierarchy = {};
     processMapData(data.maps);
-    processCategory('Features', data.features, data.features.icon);
+    processCategory('Features', data.features, data.features.Icon);
     needUpdate = true;
     setInterval(drawMap, 100); // set the animation into motion
 }
