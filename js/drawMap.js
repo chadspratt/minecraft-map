@@ -12,8 +12,8 @@ var canvas = document.getElementById('mapCanvas'),
     isDown = false,
     scale = 1,
     needUpdate = false,
-    mapWidth = canvas.width / scale,
-    mapHeight = canvas.height / scale;
+    visibleBoundary,
+    clickedFeature = null;
 
 function clearMap() {
     'use strict';
@@ -26,7 +26,7 @@ function clearMap() {
     ctx.restore();
 }
 
-function drawMaps(visibleBoundary) {
+function drawMaps() {
     'use strict';
     var x,
         y,
@@ -46,7 +46,7 @@ function drawMaps(visibleBoundary) {
     }
 }
 
-function drawFeatures(visibleBoundary) {
+function drawFeatures() {
     'use strict';
     var categoryName,
         featureBoundaries,
@@ -55,23 +55,28 @@ function drawFeatures(visibleBoundary) {
         x,
         y,
         img;
-    // clear
+    // store all features that get drawn
     visibleFeatures = {};
+    // go through each category
     for (categoryName in categoryFeatures) {
         if (categoryFeatures.hasOwnProperty(categoryName)) {
             featureBoundaries = categoryFeatures[categoryName];
+            // and each feature
             for (featureName in featureBoundaries) {
                 if (featureBoundaries.hasOwnProperty(featureName)) {
                     featureBoundary = featureBoundaries[featureName];
+                    // if the feature is visible
                     if (visibleBoundary.contains(featureBoundary)) {
+                        // draw the feature
                         img = document.createElement('img');
                         img.src = featureBoundary.image;
                         x = featureBoundary.left;
                         y = featureBoundary.top;
                         ctx.drawImage(img, x, y,
+                                      // divide by scale to keep size constant
                                       featureBoundary.width / scale,
                                       featureBoundary.height / scale);
-                        // store all visible features for checking mouseover
+                        // and store it for checking mouseover
                         visibleFeatures[featureName] = featureBoundary;
                     }
                 }
@@ -80,14 +85,16 @@ function drawFeatures(visibleBoundary) {
     }
 }
 
-function Boundary(left, top, width, height, image) {
+function Boundary(centerX, centerY, width, height, image) {
     'use strict';
-    this.left = left;
-    this.right = left + width;
-    this.top = top;
-    this.bottom = top + height;
+    this.centerX = centerX;
+    this.centerY = centerY;
     this.width = width;
     this.height = height;
+    this.left = centerX - width / 2;
+    this.right = this.left + width;
+    this.top = centerY - height / 2;
+    this.bottom = this.top + height;
     this.image = image;
     this.contains = function contains(boundary) {
         return (boundary.left < this.right &&
@@ -96,37 +103,64 @@ function Boundary(left, top, width, height, image) {
                 boundary.bottom > this.top);
     };
     // for checking mouseover
-    this.containsPoint = function containsPoint(x, y) {
-        return (x < this.right &&
-                x > this.left &&
-                y < this.bottom &&
-                y > this.top);
+    this.containsPoint = function containsPoint(coords) {
+        return (coords.x < this.right &&
+                coords.x > this.left &&
+                coords.y < this.bottom &&
+                coords.y > this.top);
+    };
+    this.squareDistFromCenter = function squareDistFromCenter(x, y) {
+        var dx = this.centerX - x,
+            dy = this.centerY - y;
+        return dx * dx + dy * dy;
     };
 }
 
 function drawMap() {
     'use strict';
-    var left,
-        top,
-        mapBoundary;
     // only redraw when needed (transformation changed, features added)
     if (needUpdate) {
-        // visible bounds
-        left = viewCenter.x - mapWidth / 2;
-        top = viewCenter.y - mapHeight / 2;
-        mapBoundary = new Boundary(left, top, mapWidth, mapHeight, null);
-
+        visibleBoundary = new Boundary(viewCenter.x, viewCenter.y,
+                                       visibleBoundary.width,
+                                       visibleBoundary.height,
+                                       null);
         clearMap();
-        drawMaps(mapBoundary);
-        drawFeatures(mapBoundary);
+        drawMaps();
+        drawFeatures();
         needUpdate = false;
     }
+}
+
+function getFeatureNear(coords) {
+    'use strict';
+    var nearestFeature = null,
+        // check for features within 20 pixels (squared for efficiency)
+        // divide by scale to get map distance
+        nearestDist = 20 * 20 / scale,
+        featureName,
+        featureBoundary,
+        featureDist;
+    for (featureName in visibleFeatures) {
+        if (visibleFeatures.hasOwnProperty(featureName)) {
+            featureBoundary = visibleFeatures[featureName];
+            featureDist = featureBoundary.squareDistFromCenter(coords.x,
+                                                               coords.y);
+            if (featureDist < nearestDist) {
+                nearestDist = featureDist;
+                // assign return value
+                nearestFeature = featureName;
+            }
+        }
+    }
+    return nearestFeature;
 }
 
 document.body.onmousemove = function mouseMoved(e) {
     'use strict';
     var newTranslation = {x: 0, y: 0},
-        mousePos = {x: 0, y: 0};
+        mousePos = {x: 0, y: 0},
+        nearbyFeature = null;
+    // pan the map
     if (isDown) {
         newTranslation = {x: e.pageX - canvas.offsetLeft - startTranslation.x,
                           y: e.pageY - canvas.offsetTop - startTranslation.y};
@@ -135,18 +169,30 @@ document.body.onmousemove = function mouseMoved(e) {
         viewCenter = {x: (canvas.width / 2 - newTranslation.x) / scale,
                       y: (canvas.height / 2 - newTranslation.y) / scale};
         needUpdate = true;
-    // update cursor coordinates when not panning (stay the same while panning)
+    // update cursor coordinates and check against features
     } else {
         mousePos = {
             x: Math.round((e.pageX - canvas.offsetLeft - lastTranslation.x) / scale),
             y: Math.round((e.pageY - canvas.offsetTop - lastTranslation.y) / scale)
         };
-        coordDisplay.innerHTML = 'x: ' + mousePos.x + ' z: ' + mousePos.y;
+        // check if mouse is inside canvas
+        if (visibleBoundary.containsPoint(mousePos)) {
+            // and near a feature
+            nearbyFeature = getFeatureNear(mousePos);
+        }
+        if (nearbyFeature !== null) {
+            coordDisplay.innerHTML = nearbyFeature;
+        } else {
+            coordDisplay.innerHTML = 'x: ' + mousePos.x + ' z: ' + mousePos.y;
+        }
     }
+    // clear so that click and drags won't cause a feature selection
+    clickedFeature = null;
 };
 
 canvas.onmousedown = function mouseButtonPressed(e) {
     'use strict';
+    var mousePos;
     // check this in case the cursor was released outside the document
     // in which case the event would have been missed
     if (isDown) {
@@ -160,6 +206,11 @@ canvas.onmousedown = function mouseButtonPressed(e) {
         x: e.pageX - canvas.offsetLeft - lastTranslation.x,
         y: e.pageY - canvas.offsetTop - lastTranslation.y
     };
+    mousePos = {
+        x: Math.round((e.pageX - canvas.offsetLeft - lastTranslation.x) / scale),
+        y: Math.round((e.pageY - canvas.offsetTop - lastTranslation.y) / scale)
+    };
+    clickedFeature = getFeatureNear(mousePos);
 };
 
 document.body.onmouseup = function mouseButtonReleased(e) {
@@ -172,6 +223,9 @@ document.body.onmouseup = function mouseButtonReleased(e) {
             y: e.pageY - canvas.offsetTop - startTranslation.y
         };
         needUpdate = true;
+        if (clickedFeature !== null) {
+            window.alert(clickedFeature);
+        }
     }
 };
 
@@ -199,7 +253,6 @@ function processMapData(mapData) {
         minX = Infinity,
         minY = Infinity,
         mapSize = 128 * 8,
-        mapAdjust = mapSize / 2,
         mapName,
         map,
         mapBoundary;
@@ -207,8 +260,8 @@ function processMapData(mapData) {
     for (mapName in mapData) {
         if (mapData.hasOwnProperty(mapName)) {
             map = mapData[mapName];
-            mapBoundary = new Boundary(map['X coord'] - mapAdjust,
-                                       map['Z coord'] - mapAdjust,
+            mapBoundary = new Boundary(map['X coord'],
+                                       map['Z coord'],
                                        mapSize, mapSize,
                                        map['Image location']);
             // store them in an array for ordered drawing later
@@ -228,18 +281,20 @@ function processMapData(mapData) {
         }
     }
     mapArray.sort(sortMaps);
+    // map coordinates of the center of the visible map
     viewCenter.x = (minX + maxX) / 2;
     viewCenter.y = (minY + maxY) / 2;
     // scale so the whole map fits
     scale = Math.min(canvas.width / (maxX - minX),
                      canvas.height / (maxY - minY));
-    // scale = Math.max(canvas.width, canvas.height) /
-    //         Math.max(maxX - minX, maxY - minY);
     // update the width in map coordinates
-    mapWidth = canvas.width / scale;
-    mapHeight = canvas.height / scale;
+    visibleBoundary = new Boundary(viewCenter.x, viewCenter.y,
+                                   canvas.width / scale,
+                                   canvas.height / scale,
+                                   null);
+    // set initial transformation
     lastTranslation = {x: canvas.width / 2 - viewCenter.x * scale,
-            y: canvas.height / 2 - viewCenter.y * scale};
+                       y: canvas.height / 2 - viewCenter.y * scale};
     ctx.setTransform(scale, 0, 0, scale, lastTranslation.x, lastTranslation.y);
 }
 
@@ -250,7 +305,6 @@ function processFeatures(features, categoryIcon) {
         featureBoundary,
         featureBoundaries = {},
         featureSize = 10,
-        featureAdjust = featureSize / 2,
         x,
         y;
     for (featureName in features) {
@@ -264,8 +318,8 @@ function processFeatures(features, categoryIcon) {
                 if (feature.Icon === null) {
                     feature.Icon = categoryIcon;
                 }
-                featureBoundary = new Boundary(feature['X coord'] - featureAdjust,
-                                               feature['Z coord'] - featureAdjust,
+                featureBoundary = new Boundary(feature['X coord'],
+                                               feature['Z coord'],
                                                featureSize, featureSize,
                                                feature.Icon);
                 featureBoundaries[featureName] = featureBoundary;
@@ -373,4 +427,20 @@ document.getElementById('getmapdata').onclick = function getMapData() {
             'application/x-www-form-urlencoded');
         mapRequest.send(reqData);
     }
+};
+
+document.getElementById('zoom_out').onclick = function zoomOut() {
+    'use strict';
+    scale = scale * 0.9;
+    ctx.setTransform(scale, 0, 0, scale,
+                     lastTranslation.x, lastTranslation.y);
+    needUpdate = true;
+};
+
+document.getElementById('zoom_in').onclick = function zoomOut() {
+    'use strict';
+    scale = scale * 1.1;
+    ctx.setTransform(scale, 0, 0, scale,
+                     lastTranslation.x, lastTranslation.y);
+    needUpdate = true;
 };
