@@ -1,3 +1,4 @@
+/*global $ */
 var canvas = document.getElementById('mapCanvas'),
     coordDisplay = document.getElementById('coorddisplay'),
     ctx = canvas.getContext('2d'),
@@ -5,6 +6,8 @@ var canvas = document.getElementById('mapCanvas'),
     categoryHierarchy = {},
     categoryFeatures = {},
     categoryIcons = {},
+    // stores the names of the categories that are toggled on
+    visibleCategories = {},
     visibleFeatures = {},
     startTranslation = {x: 0, y: 0},
     lastTranslation = {x: 0, y: 0},
@@ -12,7 +15,7 @@ var canvas = document.getElementById('mapCanvas'),
     isDown = false,
     scale = 1,
     needUpdate = false,
-    visibleBoundary,
+    visibleBoundary = null,
     clickedFeature = null;
 
 function clearMap() {
@@ -57,15 +60,15 @@ function drawFeatures() {
         img;
     // store all features that get drawn
     visibleFeatures = {};
-    // go through each category
-    for (categoryName in categoryFeatures) {
-        if (categoryFeatures.hasOwnProperty(categoryName)) {
+    // go through each category that's turned on
+    for (categoryName in visibleCategories) {
+        if (visibleCategories.hasOwnProperty(categoryName)) {
+            // go through the category's features
             featureBoundaries = categoryFeatures[categoryName];
-            // and each feature
             for (featureName in featureBoundaries) {
                 if (featureBoundaries.hasOwnProperty(featureName)) {
                     featureBoundary = featureBoundaries[featureName];
-                    // if the feature is visible
+                    // if the feature is in the field of view
                     if (visibleBoundary.contains(featureBoundary)) {
                         // draw the feature
                         img = document.createElement('img');
@@ -176,7 +179,7 @@ document.body.onmousemove = function mouseMoved(e) {
             y: Math.round((e.pageY - canvas.offsetTop - lastTranslation.y) / scale)
         };
         // check if mouse is inside canvas
-        if (visibleBoundary.containsPoint(mousePos)) {
+        if (visibleBoundary !== null && visibleBoundary.containsPoint(mousePos)) {
             // and near a feature
             nearbyFeature = getFeatureNear(mousePos);
         }
@@ -367,18 +370,66 @@ function processCategory(categoryName, category, parentIcon) {
                             categoryIcons[categoryName]);
         }
     }
+    // set category visible by default
+    visibleCategories[categoryName] = null;
+}
+
+function createCheckBox(checkBoxName) {
+    'use strict';
+    var checkbox = ['<input',
+                    'type="checkbox"',
+                    'class="categoryToggle"',
+                    'id="' + checkBoxName + '"',
+                    'checked="checked"',
+                    '/>'].join(' ');
+    return '<li><label>' + checkbox + checkBoxName + '</label></li>\n';
+}
+
+function createCheckboxes(categoryName) {
+    'use strict';
+    var category,
+        subcategory,
+        checkBoxHtml = '<ul>\n',
+        i;
+    category = categoryHierarchy[categoryName];
+    checkBoxHtml += createCheckBox(categoryName);
+    for (i = 0; i < category.children.length; i += 1) {
+        subcategory = category.children[i];
+        checkBoxHtml += createCheckboxes(subcategory);
+    }
+    checkBoxHtml += '</ul>\n';
+    return checkBoxHtml;
+}
+
+function setCheckboxHandlers() {
+    'use strict';
+    $('.categoryToggle').on('click', function updateCategories() {
+        // clear global variable
+        visibleCategories = {};
+        // for each checkbox
+        $('.categoryToggle').each(function addIfChecked(index, element) {
+            if (this.checked) {
+                visibleCategories[this.id] = null;
+            }
+        });
+        needUpdate = true;
+    });
 }
 
 function processData(dataRequest) {
     'use strict';
-    var debugArea = document.getElementById('debugarea'),
-        data = JSON.parse(dataRequest.responseText);
+    var categoryArea = document.getElementById('categories'),
+        data = JSON.parse(dataRequest.responseText),
+        checkBoxHtml;
     // clear the data structures for storing all the data
     categoryIcons = {};
     categoryFeatures = {};
     categoryHierarchy = {};
     processMapData(data.maps);
     processCategory('Features', data.features, data.features.Icon);
+    checkBoxHtml = createCheckboxes('Features');
+    categoryArea.innerHTML = checkBoxHtml;
+    setCheckboxHandlers();
     needUpdate = true;
     setInterval(drawMap, 100); // set the animation into motion
 }
@@ -404,7 +455,7 @@ function createHttpRequest() {
     return httpRequest;
 }
 
-document.getElementById('getmapdata').onclick = function getMapData() {
+$('#getmapdata').click(function getMapData() {
     'use strict';
     // define the query to send to semantic mediawiki
     var fetchdataurl = 'http://dogtato.net/mcmap/php/mapData.php',
@@ -427,20 +478,20 @@ document.getElementById('getmapdata').onclick = function getMapData() {
             'application/x-www-form-urlencoded');
         mapRequest.send(reqData);
     }
-};
+});
 
-document.getElementById('zoom_out').onclick = function zoomOut() {
+$('#zoom_out').click(function zoomOut() {
     'use strict';
     scale = scale * 0.9;
     ctx.setTransform(scale, 0, 0, scale,
                      lastTranslation.x, lastTranslation.y);
     needUpdate = true;
-};
+});
 
-document.getElementById('zoom_in').onclick = function zoomOut() {
+$('#zoom_in').click(function zoomOut() {
     'use strict';
     scale = scale * 1.1;
     ctx.setTransform(scale, 0, 0, scale,
                      lastTranslation.x, lastTranslation.y);
     needUpdate = true;
-};
+});

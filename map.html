@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
+<script src="./js/jquery-1.10.2.js"></script>
 <!--   // <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script> -->
 </head>
 <body>
 <span id="mapcontrols">
-    <label><input type="checkbox" id="structureToggle"> Structures</label><br>
+<!--     <label><input type="checkbox" id="structuretoggle"> structures</label><br> -->
     <span id="getmapdata" style="cursor: pointer; text-decoration: underline">
       load map
     </span><br>
@@ -17,14 +18,13 @@
       +
     </span>
 </span><br>
-<canvas id="mapCanvas" width="1000" height="600" style="border:1px solid #d3d3d3;">
-Your browser does not support the HTML5 canvas tag.</canvas><br>
+<canvas id="mapCanvas" width="800" height="600" style="border:1px solid #d3d3d3;">
+Your browser does not support the HTML5 canvas tag.</canvas>
+<span id="categories"></span>
+<span id="featureinfo"></span><br>
 <span id="coorddisplay"></span>
 <span id="debugarea"></span>
 
- <script type="text/javascript">
-  viewCenter = {x: 0, y: 0};
-</script>
 <script src="./js/drawMap.js"></script>
 </body>
 </html>
