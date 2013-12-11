@@ -455,7 +455,7 @@ function createHttpRequest() {
     return httpRequest;
 }
 
-$('#getmapdata').click(function getMapData() {
+function getMapData() {
     'use strict';
     // define the query to send to semantic mediawiki
     var fetchdataurl = 'http://dogtato.net/mcmap/php/mapData.php',
@@ -478,7 +478,9 @@ $('#getmapdata').click(function getMapData() {
             'application/x-www-form-urlencoded');
         mapRequest.send(reqData);
     }
-});
+}
+
+$('#getmapdata').click(getMapData);
 
 $('#zoom_out').click(function zoomOut() {
     'use strict';
@@ -494,4 +496,9 @@ $('#zoom_in').click(function zoomOut() {
     ctx.setTransform(scale, 0, 0, scale,
                      lastTranslation.x, lastTranslation.y);
     needUpdate = true;
+});
+
+$(document).ready(function initialSetup() {
+    'use strict';
+    getMapData();
 });

@@ -1,14 +1,15 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <link rel="stylesheet" type="text/css" href="./style.css">
 <script src="./js/jquery-1.10.2.js"></script>
 <!--   // <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script> -->
 </head>
 <body>
-<span id="mapcontrols">
-<!--     <label><input type="checkbox" id="structuretoggle"> structures</label><br> -->
+<span id="maparea">
+  <span id="mapcontrols">
     <span id="getmapdata" style="cursor: pointer; text-decoration: underline">
-      load map
+      reload map
     </span><br>
     Zoom:
     <span id="zoom_out" style="cursor: pointer; text-decoration: underline">
@@ -17,12 +18,13 @@
     <span id="zoom_in" style="cursor: pointer; text-decoration: underline">
       +
     </span>
-</span><br>
-<canvas id="mapCanvas" width="800" height="600" style="border:1px solid #d3d3d3;">
-Your browser does not support the HTML5 canvas tag.</canvas>
+  </span><br>
+  <canvas id="mapCanvas" width="800" height="600">
+  Your browser does not support the HTML5 canvas tag.</canvas>
+  <span id="coorddisplay"></span>
+</span>
 <span id="categories"></span>
 <span id="featureinfo"></span><br>
-<span id="coorddisplay"></span>
 <span id="debugarea"></span>
 
 <script src="./js/drawMap.js"></script>
