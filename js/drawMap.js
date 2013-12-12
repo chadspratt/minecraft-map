@@ -168,8 +168,13 @@ function setMouseoverBox(featureName, x, y) {
         mouseoverBox.html(featureName);
         // convert map coordinates back to browser window coordinates
         mouseoverBox.css('left', x);
-        mouseoverBox.css('top', y - 20);
+        mouseoverBox.css('top', y - 30);
     }
+}
+
+function setFeatureInfo (featureName) {
+    'use strict';
+    return featureName;
 }
 
 document.body.onmousemove = function mouseMoved(e) {
@@ -189,8 +194,8 @@ document.body.onmousemove = function mouseMoved(e) {
     // update cursor coordinates and check against features
     } else {
         mousePos = {
-            x: Math.round((e.pageX - canvas.offsetLeft - lastTranslation.x) / scale),
-            y: Math.round((e.pageY - canvas.offsetTop - lastTranslation.y) / scale)
+            x: Math.round((e.pageX - (canvas.offsetLeft || 0) - lastTranslation.x) / scale),
+            y: Math.round((e.pageY - (canvas.offsetTop || 0) - lastTranslation.y) / scale)
         };
         // check if mouse is inside canvas
         if (visibleBoundary !== null && visibleBoundary.containsPoint(mousePos)) {

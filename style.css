@@ -25,8 +25,14 @@
 }
 #categories {
     position: absolute;
-    max-width: 300px;
+    width: 300px;
     top: 5px;
+    left: 810px;
+}
+#featureinfo {
+    position: absolute;
+    max-width: 300px;
+    top: 400px;
     left: 810px;
 }
 #coorddisplay {
