@@ -42,8 +42,7 @@ function drawMaps() {
         y = mapBoundary.top;
         // check that map will be visible
         if (visibleBoundary.contains(mapBoundary)) {
-            image = document.createElement('img');
-            image.src = mapBoundary.image;
+            image = mapBoundary.image;
             canvasContext.drawImage(image, x, y, mapBoundary.width, mapBoundary.height);
         }
     }
@@ -71,8 +70,7 @@ function drawFeatures() {
                     // if the feature is in the field of view
                     if (visibleBoundary.contains(featureBoundary)) {
                         // draw the feature
-                        image = document.createElement('img');
-                        image.src = featureBoundary.image;
+                        image = featureBoundary.image;
                         x = featureBoundary.left;
                         y = featureBoundary.top;
                         canvasContext.drawImage(image, x, y,
@@ -98,7 +96,8 @@ function Boundary(centerX, centerY, width, height, image) {
     this.right = this.left + width;
     this.top = centerY - height / 2;
     this.bottom = this.top + height;
-    this.image = image;
+    this.image = document.createElement('img');
+    this.image.src = image;
     this.contains = function contains(boundary) {
         return (boundary.left < this.right &&
                 boundary.right > this.left &&
