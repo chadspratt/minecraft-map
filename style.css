@@ -10,6 +10,7 @@
     top: 0px;
     left: 0px;
     border: 1px solid #d3d3d3;
+    /*on bottom*/
     z-index: 0;
 }
 #mapcontrols {
@@ -19,6 +20,7 @@
     max-width: 100px;
     background-color: #ffffff;
     border: 1px solid #d3d3d3;
+    /*on top of map*/
     z-index: 1;
 }
 #categories {
@@ -33,5 +35,18 @@
     bottom: 10px;
     background-color: #ffffff;
     border: 1px solid #d3d3d3;
+    /*on top of map*/
     z-index: 1;
+}
+#mouseoverbox {
+    position: absolute;
+    /*off screen initially*/
+    top: -1000px;
+    left: -1000px;
+/*    width: 200px;
+    height: 20px;*/
+    background-color: #ffffff;
+    border: 1px solid #d3d3d3;
+    /*on top of everything else*/
+    z-index: 2;
 }

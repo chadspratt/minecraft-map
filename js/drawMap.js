@@ -158,6 +158,20 @@ function getFeatureNear(coords) {
     return nearestFeature;
 }
 
+function setMouseoverBox(featureName, x, y) {
+    'use strict';
+    var mouseoverBox = $('#mouseoverbox');
+    if (featureName === null) {
+        mouseoverBox.css('left', -1000);
+        mouseoverBox.css('top', -1000);
+    } else {
+        mouseoverBox.html(featureName);
+        // convert map coordinates back to browser window coordinates
+        mouseoverBox.css('left', x);
+        mouseoverBox.css('top', y - 20);
+    }
+}
+
 document.body.onmousemove = function mouseMoved(e) {
     'use strict';
     var newTranslation = {x: 0, y: 0},
@@ -184,10 +198,12 @@ document.body.onmousemove = function mouseMoved(e) {
             nearbyFeature = getFeatureNear(mousePos);
         }
         if (nearbyFeature !== null) {
+            setMouseoverBox(nearbyFeature, e.pageX, e.pageY);
             coordDisplay.innerHTML = nearbyFeature;
         } else {
-            coordDisplay.innerHTML = 'x: ' + mousePos.x + ' z: ' + mousePos.y;
+            setMouseoverBox(null, null);
         }
+        coordDisplay.innerHTML = 'x: ' + mousePos.x + ' z: ' + mousePos.y;
     }
     // clear so that click and drags won't cause a feature selection
     clickedFeature = null;
