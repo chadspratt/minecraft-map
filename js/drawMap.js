@@ -2,6 +2,7 @@
 var canvas = document.getElementById('mapCanvas'),
     coordDisplay = document.getElementById('coorddisplay'),
     canvasContext = canvas.getContext('2d'),
+    canvasPosition = {x: 0, y: 0},
     mapArray = [],
     categoryHierarchy = {},
     categoryFeatures = {},
@@ -31,19 +32,15 @@ function clearMap() {
 
 function drawMaps() {
     'use strict';
-    var x,
-        y,
-        image,
-        mapBoundary,
+    var mapBoundary,
         i;
     for (i = 0; i < mapArray.length; i += 1) {
         mapBoundary = mapArray[i];
-        x = mapBoundary.left;
-        y = mapBoundary.top;
         // check that map will be visible
         if (visibleBoundary.contains(mapBoundary)) {
-            image = mapBoundary.image;
-            canvasContext.drawImage(image, x, y, mapBoundary.width, mapBoundary.height);
+            canvasContext.drawImage(mapBoundary.image,
+                                    mapBoundary.left, mapBoundary.top,
+                                    mapBoundary.width, mapBoundary.height);
         }
     }
 }
@@ -53,10 +50,7 @@ function drawFeatures() {
     var categoryName,
         featureBoundaries,
         featureName,
-        featureBoundary,
-        x,
-        y,
-        image;
+        featureBoundary;
     // store all features that get drawn
     visibleFeatures = {};
     // go through each category that's turned on
@@ -70,13 +64,12 @@ function drawFeatures() {
                     // if the feature is in the field of view
                     if (visibleBoundary.contains(featureBoundary)) {
                         // draw the feature
-                        image = featureBoundary.image;
-                        x = featureBoundary.left;
-                        y = featureBoundary.top;
-                        canvasContext.drawImage(image, x, y,
-                                      // divide by scale to keep size constant
-                                      featureBoundary.width / scale,
-                                      featureBoundary.height / scale);
+                        canvasContext.drawImage(featureBoundary.image,
+                                                featureBoundary.left,
+                                                featureBoundary.top,
+                                                // divide by scale to keep size constant
+                                                featureBoundary.width / scale,
+                                                featureBoundary.height / scale);
                         // and store it for checking mouseover
                         visibleFeatures[featureName] = featureBoundary;
                     }
@@ -96,8 +89,15 @@ function Boundary(centerX, centerY, width, height, image) {
     this.right = this.left + width;
     this.top = centerY - height / 2;
     this.bottom = this.top + height;
-    this.image = document.createElement('img');
-    this.image.src = image;
+    if (image !== null) {
+        this.image = document.createElement('img');
+        this.image.src = image;
+        this.image.onload = function imageLoaded() {
+            needUpdate = true;
+        };
+    } else {
+        this.image = null;
+    }
     this.contains = function contains(boundary) {
         return (boundary.left < this.right &&
                 boundary.right > this.left &&
@@ -183,8 +183,8 @@ document.body.onmousemove = function mouseMoved(e) {
         nearbyFeature = null;
     // pan the map
     if (isDown) {
-        newTranslation = {x: e.pageX - (canvas.offsetLeft || 0) - startTranslation.x,
-                          y: e.pageY - (canvas.offsetTop || 0) - startTranslation.y};
+        newTranslation = {x: e.pageX - canvasPosition.x - startTranslation.x,
+                          y: e.pageY - canvasPosition.y - startTranslation.y};
         canvasContext.setTransform(scale, 0, 0, scale,
                          newTranslation.x, newTranslation.y);
         viewCenter = {x: (canvas.width / 2 - newTranslation.x) / scale,
@@ -193,20 +193,17 @@ document.body.onmousemove = function mouseMoved(e) {
     // update cursor coordinates and check against features
     } else {
         mousePos = {
-            x: Math.round((e.pageX - (canvas.offsetLeft || 0) - lastTranslation.x) / scale),
-            y: Math.round((e.pageY - (canvas.offsetTo || 0) - lastTranslation.y) / scale)
+            x: Math.round((e.pageX - canvasPosition.x - lastTranslation.x) / scale),
+            y: Math.round((e.pageY - canvasPosition.y - lastTranslation.y) / scale)
         };
         // check if mouse is inside canvas
         if (visibleBoundary !== null && visibleBoundary.containsPoint(mousePos)) {
             // and near a feature
             nearbyFeature = getFeatureNear(mousePos);
         }
-        if (nearbyFeature !== null) {
-            setMouseoverBox(nearbyFeature, e.pageX, e.pageY);
-            coordDisplay.innerHTML = nearbyFeature;
-        } else {
-            setMouseoverBox(null, null);
-        }
+        // show feature name in mouse tooltip, or remove tooltip if 
+        // nearbyFeature is null
+        setMouseoverBox(nearbyFeature, e.pageX, e.pageY);
         coordDisplay.innerHTML = 'x: ' + mousePos.x + ' z: ' + mousePos.y;
     }
     // clear so that click and drags won't cause a feature selection
@@ -220,18 +217,18 @@ canvas.onmousedown = function mouseButtonPressed(e) {
     // in which case the event would have been missed
     if (isDown) {
         lastTranslation = {
-            x: e.pageX - (canvas.offsetLeft || 0) - startTranslation.x,
-            y: e.pageY - (canvas.offsetTop || 0) - startTranslation.y
+            x: e.pageX - canvasPosition.x - startTranslation.x,
+            y: e.pageY - canvasPosition.y - startTranslation.y
         };
     }
     isDown = true;
     startTranslation = {
-        x: e.pageX - (canvas.offsetLeft || 0) - lastTranslation.x,
-        y: e.pageY - (canvas.offsetTop || 0) - lastTranslation.y
+        x: e.pageX - canvasPosition.x - lastTranslation.x,
+        y: e.pageY - canvasPosition.y - lastTranslation.y
     };
     mousePos = {
-        x: Math.round((e.pageX - (canvas.offsetLeft || 0) - lastTranslation.x) / scale),
-        y: Math.round((e.pageY - (canvas.offsetTop || 0) - lastTranslation.y) / scale)
+        x: Math.round((e.pageX - canvasPosition.x - lastTranslation.x) / scale),
+        y: Math.round((e.pageY - canvasPosition.y - lastTranslation.y) / scale)
     };
     clickedFeature = getFeatureNear(mousePos);
 };
@@ -242,8 +239,8 @@ document.body.onmouseup = function mouseButtonReleased(e) {
     if (isDown) {
         isDown = false;
         lastTranslation = {
-            x: e.pageX - (canvas.offsetLeft || 0) - startTranslation.x,
-            y: e.pageY - (canvas.offsetTop || 0) - startTranslation.y
+            x: e.pageX - canvasPosition.x - startTranslation.x,
+            y: e.pageY - canvasPosition.y - startTranslation.y
         };
         needUpdate = true;
         if (clickedFeature !== null) {
@@ -521,5 +518,8 @@ $('#zoom_in').click(function zoomOut() {
 
 $(document).ready(function initialSetup() {
     'use strict';
+    var canvasOffset = $('#mapCanvas').offset();
+    // this is off by about 5 pixels, 
+    canvasPosition = {x: canvasOffset.left + 5, y: canvasOffset.top + 5};
     getMapData();
 });
