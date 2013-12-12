@@ -1,7 +1,7 @@
 /*global $ */
 var canvas = document.getElementById('mapCanvas'),
     coordDisplay = document.getElementById('coorddisplay'),
-    ctx = canvas.getContext('2d'),
+    canvasContext = canvas.getContext('2d'),
     mapArray = [],
     categoryHierarchy = {},
     categoryFeatures = {},
@@ -21,19 +21,19 @@ var canvas = document.getElementById('mapCanvas'),
 function clearMap() {
     'use strict';
     // clear canvas with a white background
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    canvasContext.save();
+    canvasContext.setTransform(1, 0, 0, 1, 0, 0);
+    canvasContext.fillStyle = '#FFFFFF';
+    canvasContext.fillRect(0, 0, canvas.width, canvas.height);
     // reapply scale and translation
-    ctx.restore();
+    canvasContext.restore();
 }
 
 function drawMaps() {
     'use strict';
     var x,
         y,
-        img,
+        image,
         mapBoundary,
         i;
     for (i = 0; i < mapArray.length; i += 1) {
@@ -42,9 +42,9 @@ function drawMaps() {
         y = mapBoundary.top;
         // check that map will be visible
         if (visibleBoundary.contains(mapBoundary)) {
-            img = document.createElement('img');
-            img.src = mapBoundary.image;
-            ctx.drawImage(img, x, y, mapBoundary.width, mapBoundary.height);
+            image = document.createElement('img');
+            image.src = mapBoundary.image;
+            canvasContext.drawImage(image, x, y, mapBoundary.width, mapBoundary.height);
         }
     }
 }
@@ -57,7 +57,7 @@ function drawFeatures() {
         featureBoundary,
         x,
         y,
-        img;
+        image;
     // store all features that get drawn
     visibleFeatures = {};
     // go through each category that's turned on
@@ -71,11 +71,11 @@ function drawFeatures() {
                     // if the feature is in the field of view
                     if (visibleBoundary.contains(featureBoundary)) {
                         // draw the feature
-                        img = document.createElement('img');
-                        img.src = featureBoundary.image;
+                        image = document.createElement('img');
+                        image.src = featureBoundary.image;
                         x = featureBoundary.left;
                         y = featureBoundary.top;
-                        ctx.drawImage(img, x, y,
+                        canvasContext.drawImage(image, x, y,
                                       // divide by scale to keep size constant
                                       featureBoundary.width / scale,
                                       featureBoundary.height / scale);
@@ -112,7 +112,7 @@ function Boundary(centerX, centerY, width, height, image) {
                 coords.y < this.bottom &&
                 coords.y > this.top);
     };
-    this.squareDistFromCenter = function squareDistFromCenter(x, y) {
+    this.squareDistanceFromCenter = function squareDistanceFromCenter(x, y) {
         var dx = this.centerX - x,
             dy = this.centerY - y;
         return dx * dx + dy * dy;
@@ -139,17 +139,17 @@ function getFeatureNear(coords) {
     var nearestFeature = null,
         // check for features within 20 pixels (squared for efficiency)
         // divide by scale to get map distance
-        nearestDist = 20 * 20 / scale,
+        nearestDistance = 20 * 20 / scale,
         featureName,
         featureBoundary,
-        featureDist;
+        featureDistance;
     for (featureName in visibleFeatures) {
         if (visibleFeatures.hasOwnProperty(featureName)) {
             featureBoundary = visibleFeatures[featureName];
-            featureDist = featureBoundary.squareDistFromCenter(coords.x,
+            featureDistance = featureBoundary.squareDistanceFromCenter(coords.x,
                                                                coords.y);
-            if (featureDist < nearestDist) {
-                nearestDist = featureDist;
+            if (featureDistance < nearestDistance) {
+                nearestDistance = featureDistance;
                 // assign return value
                 nearestFeature = featureName;
             }
@@ -184,9 +184,9 @@ document.body.onmousemove = function mouseMoved(e) {
         nearbyFeature = null;
     // pan the map
     if (isDown) {
-        newTranslation = {x: e.pageX - canvas.offsetLeft - startTranslation.x,
-                          y: e.pageY - canvas.offsetTop - startTranslation.y};
-        ctx.setTransform(scale, 0, 0, scale,
+        newTranslation = {x: e.pageX - (canvas.offsetLeft || 0) - startTranslation.x,
+                          y: e.pageY - (canvas.offsetTop || 0) - startTranslation.y};
+        canvasContext.setTransform(scale, 0, 0, scale,
                          newTranslation.x, newTranslation.y);
         viewCenter = {x: (canvas.width / 2 - newTranslation.x) / scale,
                       y: (canvas.height / 2 - newTranslation.y) / scale};
@@ -195,7 +195,7 @@ document.body.onmousemove = function mouseMoved(e) {
     } else {
         mousePos = {
             x: Math.round((e.pageX - (canvas.offsetLeft || 0) - lastTranslation.x) / scale),
-            y: Math.round((e.pageY - (canvas.offsetTop || 0) - lastTranslation.y) / scale)
+            y: Math.round((e.pageY - (canvas.offsetTo || 0) - lastTranslation.y) / scale)
         };
         // check if mouse is inside canvas
         if (visibleBoundary !== null && visibleBoundary.containsPoint(mousePos)) {
@@ -221,18 +221,18 @@ canvas.onmousedown = function mouseButtonPressed(e) {
     // in which case the event would have been missed
     if (isDown) {
         lastTranslation = {
-            x: e.pageX - canvas.offsetLeft - startTranslation.x,
-            y: e.pageY - canvas.offsetTop - startTranslation.y
+            x: e.pageX - (canvas.offsetLeft || 0) - startTranslation.x,
+            y: e.pageY - (canvas.offsetTop || 0) - startTranslation.y
         };
     }
     isDown = true;
     startTranslation = {
-        x: e.pageX - canvas.offsetLeft - lastTranslation.x,
-        y: e.pageY - canvas.offsetTop - lastTranslation.y
+        x: e.pageX - (canvas.offsetLeft || 0) - lastTranslation.x,
+        y: e.pageY - (canvas.offsetTop || 0) - lastTranslation.y
     };
     mousePos = {
-        x: Math.round((e.pageX - canvas.offsetLeft - lastTranslation.x) / scale),
-        y: Math.round((e.pageY - canvas.offsetTop - lastTranslation.y) / scale)
+        x: Math.round((e.pageX - (canvas.offsetLeft || 0) - lastTranslation.x) / scale),
+        y: Math.round((e.pageY - (canvas.offsetTop || 0) - lastTranslation.y) / scale)
     };
     clickedFeature = getFeatureNear(mousePos);
 };
@@ -243,8 +243,8 @@ document.body.onmouseup = function mouseButtonReleased(e) {
     if (isDown) {
         isDown = false;
         lastTranslation = {
-            x: e.pageX - canvas.offsetLeft - startTranslation.x,
-            y: e.pageY - canvas.offsetTop - startTranslation.y
+            x: e.pageX - (canvas.offsetLeft || 0) - startTranslation.x,
+            y: e.pageY - (canvas.offsetTop || 0) - startTranslation.y
         };
         needUpdate = true;
         if (clickedFeature !== null) {
@@ -319,7 +319,7 @@ function processMapData(mapData) {
     // set initial transformation
     lastTranslation = {x: canvas.width / 2 - viewCenter.x * scale,
                        y: canvas.height / 2 - viewCenter.y * scale};
-    ctx.setTransform(scale, 0, 0, scale, lastTranslation.x, lastTranslation.y);
+    canvasContext.setTransform(scale, 0, 0, scale, lastTranslation.x, lastTranslation.y);
 }
 
 function processFeatures(features, categoryIcon) {
@@ -422,10 +422,11 @@ function createCheckboxes(categoryName) {
     return checkBoxHtml;
 }
 
+// set the handlers for when a category is toggled
 function setCheckboxHandlers() {
     'use strict';
     $('.categoryToggle').on('click', function updateCategories() {
-        // clear global variable
+        // clear global variable that stores active categories
         visibleCategories = {};
         // for each checkbox
         $('.categoryToggle').each(function addIfChecked(index, element) {
@@ -506,7 +507,7 @@ $('#getmapdata').click(getMapData);
 $('#zoom_out').click(function zoomOut() {
     'use strict';
     scale = scale * 0.9;
-    ctx.setTransform(scale, 0, 0, scale,
+    canvasContext.setTransform(scale, 0, 0, scale,
                      lastTranslation.x, lastTranslation.y);
     needUpdate = true;
 });
@@ -514,7 +515,7 @@ $('#zoom_out').click(function zoomOut() {
 $('#zoom_in').click(function zoomOut() {
     'use strict';
     scale = scale * 1.1;
-    ctx.setTransform(scale, 0, 0, scale,
+    canvasContext.setTransform(scale, 0, 0, scale,
                      lastTranslation.x, lastTranslation.y);
     needUpdate = true;
 });
