@@ -7,9 +7,11 @@ var canvas = document.getElementById('mapCanvas'),
     categoryHierarchy = {},
     categoryFeatures = {},
     categoryIcons = {},
+    featureIconSize = 10,
     // stores the names of the categories that are toggled on
     visibleCategories = {},
     visibleFeatures = {},
+    featureInfo = {},
     startTranslation = {x: 0, y: 0},
     lastTranslation = {x: 0, y: 0},
     viewCenter = {x: 0, y: 0},
@@ -171,9 +173,14 @@ function setMouseoverBox(featureName, x, y) {
     }
 }
 
-function setFeatureInfo (featureName) {
+function setFeatureInfo(featureName) {
     'use strict';
-    return featureName;
+    $.post('http://dogtato.net/minecraft/index.php',
+           {title: featureName, action: 'render'})
+           // {title: featureName, printable: 'yes'})
+        .done(function fillFeatureInfoBox(data) {
+            $('#featureinfo').html('<h1>' + featureName + '</h1><br />' + data);
+        });
 }
 
 document.body.onmousemove = function mouseMoved(e) {
@@ -201,11 +208,11 @@ document.body.onmousemove = function mouseMoved(e) {
             // and near a feature
             nearbyFeature = getFeatureNear(mousePos);
         }
-        // show feature name in mouse tooltip, or remove tooltip if 
-        // nearbyFeature is null
-        setMouseoverBox(nearbyFeature, e.pageX, e.pageY);
         coordDisplay.innerHTML = 'x: ' + mousePos.x + ' z: ' + mousePos.y;
     }
+    // show feature name in mouse tooltip, or remove tooltip if 
+    // nearbyFeature is null
+    setMouseoverBox(nearbyFeature, e.pageX, e.pageY);
     // clear so that click and drags won't cause a feature selection
     clickedFeature = null;
 };
@@ -244,7 +251,7 @@ document.body.onmouseup = function mouseButtonReleased(e) {
         };
         needUpdate = true;
         if (clickedFeature !== null) {
-            window.alert(clickedFeature);
+            setFeatureInfo(clickedFeature);
         }
     }
 };
@@ -324,7 +331,6 @@ function processFeatures(features, categoryIcon) {
         feature,
         featureBoundary,
         featureBoundaries = {},
-        featureSize = 10,
         x,
         y;
     for (featureName in features) {
@@ -340,7 +346,7 @@ function processFeatures(features, categoryIcon) {
                 }
                 featureBoundary = new Boundary(feature['X coord'],
                                                feature['Z coord'],
-                                               featureSize, featureSize,
+                                               featureIconSize, featureIconSize,
                                                feature.Icon);
                 featureBoundaries[featureName] = featureBoundary;
             }
@@ -426,8 +432,8 @@ function setCheckboxHandlers() {
         visibleCategories = {};
         // for each checkbox
         $('.categoryToggle').each(function addIfChecked(index, element) {
-            if (this.checked) {
-                visibleCategories[this.id] = null;
+            if (element.checked) {
+                visibleCategories[element.id] = null;
             }
         });
         needUpdate = true;
