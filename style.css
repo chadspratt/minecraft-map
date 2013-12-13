@@ -24,13 +24,13 @@
 }
 #featureinfo {
     position: absolute;
-    max-width: 300px;
-    top: 400px;
+    max-width: 600px;
+    top: 250px;
     left: 810px;
 }
 #coorddisplay {
     position: absolute;
-    left: 10;
+    left: 10px;
     top: 565px;
     background-color: #ffffff;
     border: 1px solid #d3d3d3;

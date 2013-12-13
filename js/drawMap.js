@@ -179,7 +179,8 @@ function setFeatureInfo(featureName) {
            {title: featureName, action: 'render'})
            // {title: featureName, printable: 'yes'})
         .done(function fillFeatureInfoBox(data) {
-            $('#featureinfo').html('<h1>' + featureName + '</h1><br />' + data);
+            var header = '<h3>' + featureName + '</h3><br />';
+            $('#featureinfo').html(header + data);
         });
 }
 
