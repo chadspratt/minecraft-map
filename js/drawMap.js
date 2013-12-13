@@ -123,8 +123,8 @@ function drawMap() {
     // only redraw when needed (transformation changed, features added)
     if (needUpdate) {
         visibleBoundary = new Boundary(viewCenter.x, viewCenter.y,
-                                       visibleBoundary.width,
-                                       visibleBoundary.height,
+                                       canvas.width / scale,
+                                       canvas.height / scale,
                                        null);
         clearMap();
         drawMaps();
@@ -505,6 +505,8 @@ $('#zoom_out').click(function zoomOut() {
     scale = scale * 0.9;
     canvasContext.setTransform(scale, 0, 0, scale,
                      lastTranslation.x, lastTranslation.y);
+    viewCenter = {x: (canvas.width / 2 - lastTranslation.x) / scale,
+                  y: (canvas.height / 2 - lastTranslation.y) / scale};
     needUpdate = true;
 });
 
