@@ -1,85 +1,6 @@
 /*global $ */
-var canvas = document.getElementById('mapCanvas'),
-    coordDisplay = document.getElementById('coorddisplay'),
-    canvasContext = canvas.getContext('2d'),
-    canvasPosition = {x: 0, y: 0},
-    mapArray = [],
-    categoryHierarchy = {},
-    categoryFeatures = {},
-    categoryIcons = {},
-    featureIconSize = 10,
-    // stores the names of the categories that are toggled on
-    visibleCategories = {},
-    visibleFeatures = {},
-    featureInfo = {},
-    startTranslation = {x: 0, y: 0},
-    lastTranslation = {x: 0, y: 0},
-    viewCenter = {x: 0, y: 0},
-    isDown = false,
-    scale = 1,
-    needUpdate = false,
-    visibleBoundary = null,
-    clickedFeature = null;
-
-function clearMap() {
-    'use strict';
-    // clear canvas with a white background
-    canvasContext.save();
-    canvasContext.setTransform(1, 0, 0, 1, 0, 0);
-    canvasContext.fillStyle = '#FFFFFF';
-    canvasContext.fillRect(0, 0, canvas.width, canvas.height);
-    // reapply scale and translation
-    canvasContext.restore();
-}
-
-function drawMaps() {
-    'use strict';
-    var mapBoundary,
-        i;
-    for (i = 0; i < mapArray.length; i += 1) {
-        mapBoundary = mapArray[i];
-        // check that map will be visible
-        if (visibleBoundary.contains(mapBoundary)) {
-            canvasContext.drawImage(mapBoundary.image,
-                                    mapBoundary.left, mapBoundary.top,
-                                    mapBoundary.width, mapBoundary.height);
-        }
-    }
-}
-
-function drawFeatures() {
-    'use strict';
-    var categoryName,
-        featureBoundaries,
-        featureName,
-        featureBoundary;
-    // store all features that get drawn
-    visibleFeatures = {};
-    // go through each category that's turned on
-    for (categoryName in visibleCategories) {
-        if (visibleCategories.hasOwnProperty(categoryName)) {
-            // go through the category's features
-            featureBoundaries = categoryFeatures[categoryName];
-            for (featureName in featureBoundaries) {
-                if (featureBoundaries.hasOwnProperty(featureName)) {
-                    featureBoundary = featureBoundaries[featureName];
-                    // if the feature is in the field of view
-                    if (visibleBoundary.contains(featureBoundary)) {
-                        // draw the feature
-                        canvasContext.drawImage(featureBoundary.image,
-                                                featureBoundary.left,
-                                                featureBoundary.top,
-                                                // divide by scale to keep size constant
-                                                featureBoundary.width / scale,
-                                                featureBoundary.height / scale);
-                        // and store it for checking mouseover
-                        visibleFeatures[featureName] = featureBoundary;
-                    }
-                }
-            }
-        }
-    }
-}
+var featureInfo = {},
+    mainApp;
 
 function Boundary(centerX, centerY, width, height, image) {
     'use strict';
@@ -94,441 +15,510 @@ function Boundary(centerX, centerY, width, height, image) {
     if (image !== null) {
         this.image = document.createElement('img');
         this.image.src = image;
+        // maybe move this up to processMapData
         this.image.onload = function imageLoaded() {
-            needUpdate = true;
+            // not the best solution
+            mainApp.mapCanvas.needUpdate = true;
         };
     } else {
         this.image = null;
     }
-    this.contains = function contains(boundary) {
+    this.contains = function (boundary) {
         return (boundary.left < this.right &&
                 boundary.right > this.left &&
                 boundary.top < this.bottom &&
                 boundary.bottom > this.top);
     };
     // for checking mouseover
-    this.containsPoint = function containsPoint(coords) {
-        return (coords.x < this.right &&
-                coords.x > this.left &&
-                coords.y < this.bottom &&
-                coords.y > this.top);
+    this.containsPoint = function (x, y) {
+        return (x < this.right &&
+                x > this.left &&
+                y < this.bottom &&
+                y > this.top);
     };
-    this.squareDistanceFromCenter = function squareDistanceFromCenter(x, y) {
+    this.squareDistanceFromCenter = function (x, y) {
         var dx = this.centerX - x,
             dy = this.centerY - y;
         return dx * dx + dy * dy;
     };
 }
 
-function drawMap() {
+function Category(categoryName) {
     'use strict';
-    // only redraw when needed (transformation changed, features added)
-    if (needUpdate) {
-        visibleBoundary = new Boundary(viewCenter.x, viewCenter.y,
-                                       canvas.width / scale,
-                                       canvas.height / scale,
-                                       null);
-        clearMap();
-        drawMaps();
-        drawFeatures();
-        needUpdate = false;
-    }
+    this.name = categoryName;
+    this.image = null;
+    this.parent = null;
+    this.children = [];
+    this.features = {};
+    this.visible = true;
 }
-
-function getFeatureNear(coords) {
-    'use strict';
-    var nearestFeature = null,
-        // check for features within 20 pixels (squared for efficiency)
-        // divide by scale to get map distance
-        nearestDistance = 20 * 20 / scale,
-        featureName,
-        featureBoundary,
-        featureDistance;
-    for (featureName in visibleFeatures) {
-        if (visibleFeatures.hasOwnProperty(featureName)) {
-            featureBoundary = visibleFeatures[featureName];
-            featureDistance = featureBoundary.squareDistanceFromCenter(coords.x,
-                                                               coords.y);
-            if (featureDistance < nearestDistance) {
-                nearestDistance = featureDistance;
-                // assign return value
-                nearestFeature = featureName;
-            }
-        }
-    }
-    return nearestFeature;
-}
-
-function setMouseoverBox(featureName, x, y) {
-    'use strict';
-    var mouseoverBox = $('#mouseoverbox');
-    if (featureName === null) {
-        mouseoverBox.css('left', -1000);
-        mouseoverBox.css('top', -1000);
-    } else {
-        mouseoverBox.html(featureName);
-        // convert map coordinates back to browser window coordinates
-        mouseoverBox.css('left', x);
-        mouseoverBox.css('top', y - 30);
-    }
-}
-
-function setFeatureInfo(featureName) {
-    'use strict';
-    $.post('http://dogtato.net/minecraft/index.php',
-           {title: featureName, action: 'render'})
-           // {title: featureName, printable: 'yes'})
-        .done(function fillFeatureInfoBox(data) {
-            var header = '<h3>' + featureName + '</h3><br />';
-            $('#featureinfo').html(header + data);
-        });
-}
-
-document.body.onmousemove = function mouseMoved(e) {
-    'use strict';
-    var newTranslation = {x: 0, y: 0},
-        mousePos = {x: 0, y: 0},
-        nearbyFeature = null;
-    // pan the map
-    if (isDown) {
-        newTranslation = {x: e.pageX - canvasPosition.x - startTranslation.x,
-                          y: e.pageY - canvasPosition.y - startTranslation.y};
-        canvasContext.setTransform(scale, 0, 0, scale,
-                         newTranslation.x, newTranslation.y);
-        viewCenter = {x: (canvas.width / 2 - newTranslation.x) / scale,
-                      y: (canvas.height / 2 - newTranslation.y) / scale};
-        needUpdate = true;
-    // update cursor coordinates and check against features
-    } else {
-        mousePos = {
-            x: Math.round((e.pageX - canvasPosition.x - lastTranslation.x) / scale),
-            y: Math.round((e.pageY - canvasPosition.y - lastTranslation.y) / scale)
-        };
-        // check if mouse is inside canvas
-        if (visibleBoundary !== null && visibleBoundary.containsPoint(mousePos)) {
-            // and near a feature
-            nearbyFeature = getFeatureNear(mousePos);
-        }
-        coordDisplay.innerHTML = 'x: ' + mousePos.x + ' z: ' + mousePos.y;
-    }
-    // show feature name in mouse tooltip, or remove tooltip if 
-    // nearbyFeature is null
-    setMouseoverBox(nearbyFeature, e.pageX, e.pageY);
-    // clear so that click and drags won't cause a feature selection
-    clickedFeature = null;
-};
-
-canvas.onmousedown = function mouseButtonPressed(e) {
-    'use strict';
-    var mousePos;
-    // check this in case the cursor was released outside the document
-    // in which case the event would have been missed
-    if (isDown) {
-        lastTranslation = {
-            x: e.pageX - canvasPosition.x - startTranslation.x,
-            y: e.pageY - canvasPosition.y - startTranslation.y
-        };
-    }
-    isDown = true;
-    startTranslation = {
-        x: e.pageX - canvasPosition.x - lastTranslation.x,
-        y: e.pageY - canvasPosition.y - lastTranslation.y
-    };
-    mousePos = {
-        x: Math.round((e.pageX - canvasPosition.x - lastTranslation.x) / scale),
-        y: Math.round((e.pageY - canvasPosition.y - lastTranslation.y) / scale)
-    };
-    clickedFeature = getFeatureNear(mousePos);
-};
-
-document.body.onmouseup = function mouseButtonReleased(e) {
-    'use strict';
-    // check that the click started on the canvas
-    if (isDown) {
-        isDown = false;
-        lastTranslation = {
-            x: e.pageX - canvasPosition.x - startTranslation.x,
-            y: e.pageY - canvasPosition.y - startTranslation.y
-        };
-        needUpdate = true;
-        if (clickedFeature !== null) {
-            setFeatureInfo(clickedFeature);
-        }
-    }
-};
-
-// orders maps from SE to NW, so that NW will be drawn on top of SE
-// this is to cover "map_x" text in the top left corner of each map
-function sortMaps(a, b) {
-    'use strict';
-    var comparator = 0;
-    // compare based on the coordinates with a bigger difference
-    if (Math.abs(a.left - b.left) >
-            Math.abs(a.top - b.top)) {
-        // sort descending (east to west)
-        comparator =  b.left - a.left;
-    } else {
-        // sort descending (south to north)
-        comparator = b.top - a.top;
-    }
-    return comparator;
-}
-
-function processMapData(mapData) {
-    'use strict';
-    var maxX = -Infinity,
-        maxY = -Infinity,
-        minX = Infinity,
-        minY = Infinity,
-        mapSize = 128 * 8,
-        mapName,
-        map,
-        mapBoundary;
-    // determine the center of all maps
-    for (mapName in mapData) {
-        if (mapData.hasOwnProperty(mapName)) {
-            map = mapData[mapName];
-            mapBoundary = new Boundary(map['X coord'],
-                                       map['Z coord'],
-                                       mapSize, mapSize,
-                                       map['Image location']);
-            // store them in an array for ordered drawing later
-            mapArray.push(mapBoundary);
-            if (mapBoundary.right > maxX) {
-                maxX = mapBoundary.right;
-            }
-            if (mapBoundary.left < minX) {
-                minX = mapBoundary.left;
-            }
-            if (mapBoundary.bottom > maxY) {
-                maxY = mapBoundary.bottom;
-            }
-            if (mapBoundary.top < minY) {
-                minY = mapBoundary.top;
-            }
-        }
-    }
-    mapArray.sort(sortMaps);
-    // map coordinates of the center of the visible map
-    viewCenter.x = (minX + maxX) / 2;
-    viewCenter.y = (minY + maxY) / 2;
-    // scale so the whole map fits
-    scale = Math.min(canvas.width / (maxX - minX),
-                     canvas.height / (maxY - minY));
-    // update the width in map coordinates
-    visibleBoundary = new Boundary(viewCenter.x, viewCenter.y,
-                                   canvas.width / scale,
-                                   canvas.height / scale,
-                                   null);
-    // set initial transformation
-    lastTranslation = {x: canvas.width / 2 - viewCenter.x * scale,
-                       y: canvas.height / 2 - viewCenter.y * scale};
-    canvasContext.setTransform(scale, 0, 0, scale, lastTranslation.x, lastTranslation.y);
-}
-
-function processFeatures(features, categoryIcon) {
-    'use strict';
-    var featureName,
-        feature,
-        featureBoundary,
-        featureBoundaries = {},
-        x,
-        y;
-    for (featureName in features) {
-        if (features.hasOwnProperty(featureName)) {
-            feature = features[featureName];
-            x = feature['X coord'];
-            // minecraft stores N/S as z
-            y = feature['Z coord'];
-            // ignore features without coordinates
-            if (x !== null && y !== null) {
-                if (feature.Icon === null) {
-                    feature.Icon = categoryIcon;
-                }
-                featureBoundary = new Boundary(feature['X coord'],
-                                               feature['Z coord'],
-                                               featureIconSize, featureIconSize,
-                                               feature.Icon);
-                featureBoundaries[featureName] = featureBoundary;
-            }
-        }
-    }
-    return featureBoundaries;
-}
-
 function HierarchyMember() {
     'use strict';
     this.parentCat = null;
     this.children = [];
 }
 
-function processCategory(categoryName, category, parentIcon) {
+function MapData() {
     'use strict';
-    var subcategory;
-    // set category icon
-    if (category.Icon === null) {
-        categoryIcons[categoryName] = parentIcon;
-    } else {
-        categoryIcons[categoryName] = category.Icon;
-    }
-    // set category features
-    categoryFeatures[categoryName] = processFeatures(category.features,
-                                                     categoryIcons[categoryName]);
-    // create hierarchy entry for the root category
-    if (!categoryHierarchy.hasOwnProperty(categoryName)) {
-        categoryHierarchy[categoryName] = new HierarchyMember();
-    }
-    for (subcategory in category.children) {
-        if (category.children.hasOwnProperty(subcategory)) {
-            // add each subcategory as a child of the current category
-            categoryHierarchy[categoryName].children.push(subcategory);
-            // create hierarchy entries for subcategories
-            if (!categoryHierarchy.hasOwnProperty(subcategory)) {
-                categoryHierarchy[subcategory] = new HierarchyMember();
-            }
-            // add the current category as a parent of each subcategory
-            categoryHierarchy[subcategory].parentCat = categoryName;
-            // recurse
-            processCategory(subcategory,
-                            category.children[subcategory],
-                            categoryIcons[categoryName]);
+    var self = this;
+    this.maps = [];
+    this.categories = {};
+    this.mapSize = 128 * 8;
+    this.featureIconSize = 10;
+    this.boundary = null;
+
+    // orders maps from SE to NW, so that NW will be drawn on top of SE
+    // this is to cover "map_x" text in the top left corner of each map
+    this.sortMaps = function (a, b) {
+        var comparator = 0;
+        // compare based on the coordinates with a bigger difference
+        if (Math.abs(a.left - b.left) >
+                Math.abs(a.top - b.top)) {
+            // sort descending (east to west)
+            comparator =  b.left - a.left;
+        } else {
+            // sort descending (south to north)
+            comparator = b.top - a.top;
         }
-    }
-    // set category visible by default
-    visibleCategories[categoryName] = null;
-}
-
-function createCheckBox(checkBoxName) {
-    'use strict';
-    var checkbox = ['<input',
-                    'type="checkbox"',
-                    'class="categoryToggle"',
-                    'id="' + checkBoxName + '"',
-                    'checked="checked"',
-                    '/>'].join(' ');
-    return '<li><label>' + checkbox + checkBoxName + '</label></li>\n';
-}
-
-function createCheckboxes(categoryName) {
-    'use strict';
-    var category,
-        subcategory,
-        checkBoxHtml = '<ul>\n',
-        i;
-    category = categoryHierarchy[categoryName];
-    checkBoxHtml += createCheckBox(categoryName);
-    for (i = 0; i < category.children.length; i += 1) {
-        subcategory = category.children[i];
-        checkBoxHtml += createCheckboxes(subcategory);
-    }
-    checkBoxHtml += '</ul>\n';
-    return checkBoxHtml;
-}
-
-// set the handlers for when a category is toggled
-function setCheckboxHandlers() {
-    'use strict';
-    $('.categoryToggle').on('click', function updateCategories() {
-        // clear global variable that stores active categories
-        visibleCategories = {};
-        // for each checkbox
-        $('.categoryToggle').each(function addIfChecked(index, element) {
-            if (element.checked) {
-                visibleCategories[element.id] = null;
-            }
-        });
-        needUpdate = true;
-    });
-}
-
-function processData(dataRequest) {
-    'use strict';
-    var categoryArea = document.getElementById('categories'),
-        data = JSON.parse(dataRequest.responseText),
-        checkBoxHtml;
-    // clear the data structures for storing all the data
-    categoryIcons = {};
-    categoryFeatures = {};
-    categoryHierarchy = {};
-    processMapData(data.maps);
-    processCategory('Features', data.features, data.features.Icon);
-    checkBoxHtml = createCheckboxes('Features');
-    categoryArea.innerHTML = checkBoxHtml;
-    setCheckboxHandlers();
-    needUpdate = true;
-    setInterval(drawMap, 100); // set the animation into motion
-}
-
-function createHttpRequest() {
-    'use strict';
-    var httpRequest;
-    // create the httpRequest
-    if (window.XMLHttpRequest) { // Mozilla, Safari, ...
-        httpRequest = new XMLHttpRequest();
-    } else if (window.ActiveXObject) { // IE
-        try {
-            httpRequest = new window.ActiveXObject('Msxml2.XMLHTTP');
-        } catch (e) {
-            try {
-                httpRequest = new window.ActiveXObject('Microsoft.XMLHTTP');
-            } catch (e2) {
-                window.alert('Giving up :( Cannot create an XMLHTTP instance');
-                return false;
-            }
-        }
-    }
-    return httpRequest;
-}
-
-function getMapData() {
-    'use strict';
-    // define the query to send to semantic mediawiki
-    var fetchdataurl = 'http://dogtato.net/mcmap/php/mapData.php',
-        reqData = 'action=get',
-        mapRequest;
-
-    // create the httpRequest
-    mapRequest = createHttpRequest();
-    if (mapRequest) {
-        // configure and send the request
-        mapRequest.onreadystatechange = function mapDataReceived() {
-            if (mapRequest.readyState === 4) {
-                if (mapRequest.status === 200) {
-                    processData(mapRequest);
+        return comparator;
+    };
+    this.processMapData = function (mapData) {
+        var maxX = -Infinity,
+            maxY = -Infinity,
+            minX = Infinity,
+            minY = Infinity,
+            mapBoundary,
+            centerX,
+            centerY;
+        $.each(mapData, function (mapName, map) {
+            if (mapData.hasOwnProperty(mapName)) {
+                // create and store in an array for ordered drawing later
+                mapBoundary = new Boundary(map['X coord'],
+                                           map['Z coord'],
+                                           self.mapSize, self.mapSize,
+                                           map['Image location']);
+                self.maps.push(mapBoundary);
+                // determine the center of all maps
+                if (mapBoundary.right > maxX) {
+                    maxX = mapBoundary.right;
+                }
+                if (mapBoundary.left < minX) {
+                    minX = mapBoundary.left;
+                }
+                if (mapBoundary.bottom > maxY) {
+                    maxY = mapBoundary.bottom;
+                }
+                if (mapBoundary.top < minY) {
+                    minY = mapBoundary.top;
                 }
             }
-        };
-        mapRequest.open('POST', fetchdataurl);
-        mapRequest.setRequestHeader('Content-Type',
-            'application/x-www-form-urlencoded');
-        mapRequest.send(reqData);
-    }
+        });
+        this.maps.sort(this.sortMaps);
+        // map coordinates of the center of the visible map
+        centerX = (minX + maxX) / 2;
+        centerY = (minY + maxY) / 2;
+        // the bounds of all map images
+        this.boundary = new Boundary(centerX, centerY,
+                                            (maxX - minX),
+                                            (maxY - minY),
+                                            null);
+    };
+    // doesn't reference 'this'
+    this.processFeatures = function (features, categoryIcon) {
+        var featureName,
+            feature,
+            featureBoundary,
+            featureBoundaries = {},
+            x,
+            y;
+        for (featureName in features) {
+            if (features.hasOwnProperty(featureName)) {
+                feature = features[featureName];
+                x = feature['X coord'];
+                // minecraft stores N/S as z
+                y = feature['Z coord'];
+                // ignore features without coordinates
+                if (x !== null && y !== null) {
+                    if (feature.Icon === null) {
+                        feature.Icon = categoryIcon;
+                    }
+                    featureBoundary = new Boundary(feature['X coord'],
+                                                   feature['Z coord'],
+                                                   this.featureIconSize,
+                                                   this.featureIconSize,
+                                                   feature.Icon);
+                    featureBoundaries[featureName] = featureBoundary;
+                }
+            }
+        }
+        return featureBoundaries;
+    };
+    this.processCategory = function (categoryName, categoryData, parentIcon) {
+        var category = new Category(categoryName);
+        // set category icon
+        if (categoryData.Icon === null) {
+            category.image = parentIcon;
+        } else {
+            category.image = categoryData.Icon;
+        }
+        // set category features
+        category.features = this.processFeatures(categoryData.features,
+                                                 category.image);
+        $.each(categoryData.children, function (subcategoryName, subcategory) {
+            if (categoryData.children.hasOwnProperty(subcategoryName)) {
+                // add each subcategory as a child of the current category
+                category.children.push(subcategoryName);
+                // recurse, which creates self.categories[subcategoryName]
+                self.processCategory(subcategoryName,
+                                     subcategory,
+                                     category.image);
+                // add the current category as a parent of each subcategory
+                self.categories[subcategoryName].parent = categoryName;
+            }
+        });
+        this.categories[categoryName] = category;
+    };
+    this.processData = function (dataJson) {
+        var data = JSON.parse(dataJson);
+        // clear the data structures for storing all the data
+        this.categories = {};
+        this.processMapData(data.maps);
+        this.processCategory('Features', data.features, data.features.Icon);
+        $(this).trigger('dataLoaded');
+    };
+    this.load = function () {
+        // load json from sql database through php
+        $.post('http://dogtato.net/mcmap/php/mapData.php',
+               {action: 'get'})
+            .done(function fillFeatureInfoBox(data) {
+                self.processData(data);
+            });
+    };
 }
 
-$('#getmapdata').click(getMapData);
-
-$('#zoom_out').click(function zoomOut() {
+function MapCanvas() {
     'use strict';
-    scale = scale * 0.9;
-    canvasContext.setTransform(scale, 0, 0, scale,
-                     lastTranslation.x, lastTranslation.y);
-    viewCenter = {x: (canvas.width / 2 - lastTranslation.x) / scale,
-                  y: (canvas.height / 2 - lastTranslation.y) / scale};
-    needUpdate = true;
-});
+    var self = this,
+        canvasOffset;
+    this.canvas = $('#mapCanvas');
+    this.canvasContext = this.canvas[0].getContext('2d');
+    canvasOffset = $('#mapCanvas').offset();
+    // this is off by about 5 pixels, 
+    this.x = canvasOffset.left + 5;
+    this.y = canvasOffset.top + 5;
+    this.mapData = new MapData();
+    this.startTranslation = {x: 0, y: 0};
+    this.lastTranslation = {x: 0, y: 0};
+    this.viewCenter = {x: 0, y: 0};
+    this.scale = 1;
+    this.boundary = null;
+    this.visibleFeatures = {};
+    this.needUpdate = false;
+    this.loadMap = function () {
+        this.mapData.load();
+        $(this.mapData).on('dataLoaded', function () {
+            // set initial transformation
+            self.viewCenter = {x: self.mapData.boundary.centerX,
+                               y: self.mapData.boundary.centerY};
+            // scale to fit all the map images in the canvas
+            self.scale = Math.min(
+                self.canvas.width() / self.mapData.boundary.width,
+                self.canvas.height() / self.mapData.boundary.height
+            );
+            self.lastTranslation = {
+                x: self.canvas.width() / 2 - self.viewCenter.x * self.scale,
+                y: self.canvas.height() / 2 - self.viewCenter.y * self.scale
+            };
+            self.canvasContext.setTransform(self.scale, 0, 0, self.scale,
+                                            self.lastTranslation.x,
+                                            self.lastTranslation.y);
+            self.needUpdate = true;
+            $(self).trigger('canvasReady');
+        });
+    };
+    this._clear = function () {
+        // clear canvas with a white background
+        this.canvasContext.save();
+        this.canvasContext.setTransform(1, 0, 0, 1, 0, 0);
+        this.canvasContext.fillStyle = '#FFFFFF';
+        this.canvasContext.fillRect(0, 0,
+                                    this.canvas.width(), this.canvas.height());
+        // reapply scale and translation
+        this.canvasContext.restore();
+    };
+    this._drawMaps = function () {
+        var mapBoundary,
+            i;
+        for (i = 0; i < this.mapData.maps.length; i += 1) {
+            mapBoundary = this.mapData.maps[i];
+            // check that map will be visible
+            if (this.boundary.contains(mapBoundary)) {
+                this.canvasContext.drawImage(mapBoundary.image,
+                                        mapBoundary.left, mapBoundary.top,
+                                        mapBoundary.width, mapBoundary.height);
+            }
+        }
+    };
+    this._drawFeatures = function () {
+        // store all features that get drawn
+        this.visibleFeatures = {};
+        // go through each category that's turned on
+        $.each(this.mapData.categories, function (categoryName, category) {
+            if (self.mapData.categories.hasOwnProperty(categoryName) &&
+                    category.visible) {
+                $.each(category.features, function (featureName, feature) {
+                    if (category.features.hasOwnProperty(featureName) &&
+                            self.boundary.contains(feature)) {
+                        // draw the feature
+                        self.canvasContext.drawImage(feature.image,
+                                                feature.left,
+                                                feature.top,
+                                                // divide to keep size constant
+                                                feature.width / self.scale,
+                                                feature.height / self.scale);
+                        // and store it for checking mouseover
+                        self.visibleFeatures[featureName] = feature;
+                    }
+                });
+            }
+        });
+    };
+    // this is executed by setInterval so need to use self within
+    this.draw = function () {
+        // only redraw when needed (transformation changed, features added)
+        if (self.needUpdate) {
+            self.boundary = new Boundary(self.viewCenter.x, self.viewCenter.y,
+                                         self.canvas.width() / self.scale,
+                                         self.canvas.height() / self.scale,
+                                         null);
+            self._clear();
+            self._drawMaps();
+            self._drawFeatures();
+            self.needUpdate = false;
+        }
+    };
+    this.getFeatureNear = function (x, y) {
+        var nearbyFeature = null,
+            // check for features within 20 pixels (squared for efficiency)
+            // divide by scale to get map distance
+            nearestDistance = 20 * 20 / this.scale,
+            featureDistance;
+        if (this.boundary !== null &&
+                this.boundary.containsPoint(x, y)) {
+            $.each(this.visibleFeatures, function (featureName, feature) {
+                if (self.visibleFeatures.hasOwnProperty(featureName)) {
+                    featureDistance = feature.squareDistanceFromCenter(x, y);
+                    if (featureDistance < nearestDistance) {
+                        nearestDistance = featureDistance;
+                        nearbyFeature = featureName;
+                    }
+                }
+            });
+        }
+        return nearbyFeature;
+    };
+    this.startPan = function (pageX, pageY) {
+        this.startTranslation = {
+            x: pageX - this.x - this.lastTranslation.x,
+            y: pageY - this.y - this.lastTranslation.y
+        };
+    };
+    this.continuePan = function (pageX, pageY) {
+        var newTranslation = {x: pageX - this.x - this.startTranslation.x,
+                              y: pageY - this.y - this.startTranslation.y};
+        this.canvasContext.setTransform(this.scale, 0, 0, this.scale,
+                                        newTranslation.x, newTranslation.y);
+        this.viewCenter = {
+            x: (this.canvas.width() / 2 - newTranslation.x) / this.scale,
+            y: (this.canvas.height() / 2 - newTranslation.y) / this.scale
+        };
+        this.needUpdate = true;
+    };
+    this.endPan = function (pageX, pageY) {
+        this.lastTranslation = {
+            x: pageX - this.x - this.startTranslation.x,
+            y: pageY - this.y - this.startTranslation.y
+        };
+    };
+    this.zoomIn = function () {
+        this.scale = this.scale * 1.1;
+        this.canvasContext.setTransform(this.scale, 0, 0, this.scale,
+                                        this.lastTranslation.x,
+                                        this.lastTranslation.y);
+        this.needUpdate = true;
+    };
+    this.zoomOut = function () {
+        this.scale = this.scale / 1.1;
+        this.canvasContext.setTransform(this.scale, 0, 0, this.scale,
+                                        this.lastTranslation.x,
+                                        this.lastTranslation.y);
+        this.viewCenter = {
+            x: (this.canvas.width() / 2 - this.lastTranslation.x) / this.scale,
+            y: (this.canvas.height() / 2 - this.lastTranslation.y) / this.scale
+        };
+        this.needUpdate = true;
+    };
+    this.getMapPosition = function (pageX, pageY) {
+        return {
+            x: Math.round(
+                (pageX - this.x - this.lastTranslation.x) / this.scale
+            ),
+            y: Math.round(
+                (pageY - this.y - this.lastTranslation.y) / this.scale
+            )
+        };
+    };
+}
 
-$('#zoom_in').click(function zoomOut() {
+function MainApp() {
     'use strict';
-    scale = scale * 1.1;
-    canvasContext.setTransform(scale, 0, 0, scale,
-                     lastTranslation.x, lastTranslation.y);
-    needUpdate = true;
-});
+    var self = this;
+    this.mapCanvas = new MapCanvas();
+    this.coordDisplay = $('#coorddisplay');
+    this.viewCenter = {x: 0, y: 0};
+    this.mouseIsDown = false;
+    this.clickedFeature = null;
+    // set the handlers for when a category is toggled
+    this.setCheckboxHandlers = function () {
+        $('.categoryToggle').on('click', function updateCategories() {
+            self.mapCanvas.mapData.categories[this.id].visible = this.checked;
+            this.mapCanvas.needUpdate = true;
+        });
+    };
+    this.createCheckBox = function (checkBoxName) {
+        var checkbox = ['<input',
+                        'type="checkbox"',
+                        'class="categoryToggle"',
+                        'id="' + checkBoxName + '"',
+                        'checked="checked"',
+                        '/>'].join(' ');
+        return '<li><label>' + checkbox + checkBoxName + '</label></li>\n';
+    };
+    this.createCheckboxes = function (categoryName) {
+        var category,
+            subcategory,
+            checkBoxHtml = '<ul>\n',
+            i;
+        category = this.mapCanvas.mapData.categories[categoryName];
+        checkBoxHtml += this.createCheckBox(categoryName);
+        for (i = 0; i < category.children.length; i += 1) {
+            subcategory = category.children[i];
+            checkBoxHtml += this.createCheckboxes(subcategory);
+        }
+        checkBoxHtml += '</ul>\n';
+        return checkBoxHtml;
+    };
+    this.init = function () {
+        this.mapCanvas.loadMap();
+        $(this.mapCanvas).on('canvasReady', function () {
+            $('#categories').html(self.createCheckboxes('Features'));
+            setInterval(self.mapCanvas.draw, 100); // start drawing
+        });
+    };
+    this._setMouseoverBox = function (featureName, x, y) {
+        var $mouseoverBox = $('#mouseoverbox');
+        if (featureName === null) {
+            $mouseoverBox.css('left', -1000);
+            $mouseoverBox.css('top', -1000);
+        } else {
+            $mouseoverBox.html(featureName);
+            $mouseoverBox.css('left', x);
+            $mouseoverBox.css('top', y - 30);
+        }
+    };
+    this.setFeatureInfo = function (featureName) {
+        $.post('http://dogtato.net/minecraft/index.php',
+               {title: featureName, action: 'render'})
+               // {title: featureName, printable: 'yes'})
+            .done(function fillFeatureInfoBox(data) {
+                var header = '<h3>' + featureName + '</h3><br />';
+                $('#featureinfo').html(header + data);
+                // for all links in the new text
+                $('#featureinfo a').click(function followLink(clickEvent) {
+                    // don't follow the link
+                    clickEvent.preventDefault();
+                    // call the grandparent function with the link text
+                    self.setFeatureInfo(this.text());
+                });
+            });
+    };
+    this.setCoordDisplay = function (x, z) {
+        this.coordDisplay.html('x: ' + x + ' z: ' + z);
+    };
+    this.startMouse = function (pageX, pageY) {
+        var mousePos;
+        // check this in case the cursor was released outside the document
+        // in which case the event would have been missed
+        if (this.mouseIsDown) {
+            this.mapCanvas.endPan(pageX, pageY);
+        }
+        this.mouseIsDown = true;
+        this.mapCanvas.startPan(pageX, pageY);
+        mousePos = this.mapCanvas.getMapPosition(pageX, pageY);
+        this.clickedFeature = this.mapCanvas.getFeatureNear(mousePos.x,
+                                                            mousePos.y);
+    };
+    this.moveMouse = function (pageX, pageY) {
+        var mousePos = {x: 0, y: 0},
+            nearbyFeature = null;
+        // pan the map
+        if (this.mouseIsDown) {
+            this.mapCanvas.continuePan(pageX, pageY);
+        // update cursor coordinates and check against features
+        } else {
+            mousePos = this.mapCanvas.getMapPosition(pageX,
+                                                     pageY);
+            this.setCoordDisplay(mousePos.x, mousePos.y);
+            nearbyFeature = this.mapCanvas.getFeatureNear(mousePos.x,
+                                                          mousePos.y);
+        }
+        // show feature name in mouse tooltip, or remove tooltip if 
+        // nearbyFeature is null
+        this._setMouseoverBox(nearbyFeature, pageX, pageY);
+        // clear so that click and drags won't cause a feature selection
+        this.clickedFeature = null;
+    };
+    this.endMouse = function (pageX, pageY) {
+        // check that the click started on the canvas
+        if (this.mouseIsDown) {
+            this.mouseIsDown = false;
+            this.mapCanvas.endPan(pageX, pageY);
+            this.mapCanvas.needUpdate = true;
+            if (this.clickedFeature !== null) {
+                this.setFeatureInfo(this.clickedFeature);
+            }
+        }
+    };
+}
+
 
 $(document).ready(function initialSetup() {
     'use strict';
-    var canvasOffset = $('#mapCanvas').offset();
-    // this is off by about 5 pixels, 
-    canvasPosition = {x: canvasOffset.left + 5, y: canvasOffset.top + 5};
-    getMapData();
+    mainApp = new MainApp();
+    // commented for debugging
+    // mainApp.init();
+
+    $('#mapCanvas').on('mousedown', function mouseButtonPressed(event) {
+        mainApp.startMouse(event.pageX, event.pageY);
+    });
+    $(document.body).on({
+        'mousemove': function bodyMouseover(event) {
+            mainApp.moveMouse(event.pageX, event.pageY);
+        },
+        'mouseup': function bodyMouseup(event) {
+            mainApp.endMouse(event.pageX, event.pageY);
+        }
+    });
+    // reload map data from the database
+    // changed call for debugging
+    $('#getmapdata').on('click', function reloadMap() {
+        mainApp.init();
+    });
+    // $('#getmapdata').on('click', mainApp.mapCanvas.mapData.load());
+    $('#zoom_out').on('click', function zoomOut() {
+        mainApp.mapCanvas.zoomOut();
+    });
+    $('#zoom_in').on('click', function zoomIn() {
+        mainApp.mapCanvas.zoomIn();
+    });
 });
