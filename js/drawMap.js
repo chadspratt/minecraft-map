@@ -385,14 +385,19 @@ function MainApp() {
             this.mapCanvas.needUpdate = true;
         });
     };
-    this.createCheckBox = function (checkBoxName) {
+    this.createCheckBox = function (category) {
         var checkbox = ['<input',
                         'type="checkbox"',
                         'class="categoryToggle"',
-                        'id="' + checkBoxName + '"',
+                        'id="' + category.name + '"',
                         'checked="checked"',
-                        '/>'].join(' ');
-        return '<li><label>' + checkbox + checkBoxName + '</label></li>\n';
+                        '/>'].join(' '),
+            image = ['<img',
+                     'src="' + category.image + '"',
+                     'height=10px',
+                     'width=10px',
+                     '/>'].join(' ');
+        return '<li><label>' + checkbox + image + category.name + '</label></li>\n';
     };
     this.createCheckboxes = function (categoryName) {
         var category,
@@ -400,7 +405,7 @@ function MainApp() {
             checkBoxHtml = '<ul>\n',
             i;
         category = this.mapCanvas.mapData.categories[categoryName];
-        checkBoxHtml += this.createCheckBox(categoryName);
+        checkBoxHtml += this.createCheckBox(category);
         for (i = 0; i < category.children.length; i += 1) {
             subcategory = category.children[i];
             checkBoxHtml += this.createCheckboxes(subcategory);
@@ -496,7 +501,7 @@ $(document).ready(function initialSetup() {
     'use strict';
     mainApp = new MainApp();
     // commented for debugging
-    // mainApp.init();
+    mainApp.init();
 
     $('#mapCanvas').on('mousedown', function mouseButtonPressed(event) {
         mainApp.startMouse(event.pageX, event.pageY);
@@ -511,10 +516,10 @@ $(document).ready(function initialSetup() {
     });
     // reload map data from the database
     // changed call for debugging
-    $('#getmapdata').on('click', function reloadMap() {
-        mainApp.init();
-    });
-    // $('#getmapdata').on('click', mainApp.mapCanvas.mapData.load());
+    // $('#getmapdata').on('click', function reloadMap() {
+    //     mainApp.init();
+    // });
+    $('#getmapdata').on('click', mainApp.mapCanvas.mapData.load);
     $('#zoom_out').on('click', function zoomOut() {
         mainApp.mapCanvas.zoomOut();
     });
