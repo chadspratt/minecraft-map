@@ -1,6 +1,5 @@
 /*global $ */
-var featureInfo = {},
-    mainApp;
+var mainApp;
 
 function Boundary(centerX, centerY, width, height, image) {
     'use strict';
@@ -378,6 +377,8 @@ function MainApp() {
     this.viewCenter = {x: 0, y: 0};
     this.mouseIsDown = false;
     this.clickedFeature = null;
+    // cache data when feature is clicked
+    this.featureInfo = {};
     // set the handlers for when a category is toggled
     this.setCheckboxHandlers = function () {
         $('.categoryToggle').on('click', function updateCategories() {
@@ -432,20 +433,36 @@ function MainApp() {
         }
     };
     this.setFeatureInfo = function (featureName) {
-        $.post('http://dogtato.net/minecraft/index.php',
-               {title: featureName, action: 'render'})
-               // {title: featureName, printable: 'yes'})
-            .done(function fillFeatureInfoBox(data) {
-                var header = '<h3>' + featureName + '</h3><br />';
-                $('#featureinfo').html(header + data);
-                // for all links in the new text
-                $('#featureinfo a').click(function followLink(clickEvent) {
-                    // don't follow the link
-                    clickEvent.preventDefault();
-                    // load the info in #featureinfo
-                    self.setFeatureInfo(this.title);
-                });
+        // standardize the case for caching
+        var lowercaseName = featureName.toLowerCase();
+        if (this.featureInfo.hasOwnProperty(lowercaseName)) {
+            $('#featureinfo').html(this.featureInfo[lowercaseName]);
+            // for all links in the new text
+            $('#featureinfo a').click(function followLink(clickEvent) {
+                // don't follow the link
+                clickEvent.preventDefault();
+                // load the info in #featureinfo
+                self.setFeatureInfo(this.title);
             });
+        } else {
+            $.post('http://dogtato.net/minecraft/index.php',
+                   {title: featureName, action: 'render'})
+                   // {title: featureName, printable: 'yes'})
+                .done(function fillFeatureInfoBox(data) {
+                    var header = '<h3>' + featureName + '</h3><br />';
+                    $('#featureinfo').html(header + data);
+                    // remove any edit links
+                    $('#featureinfo span.editsection').remove();
+                    // for all links in the new text
+                    $('#featureinfo a').click(function followLink(clickEvent) {
+                        // don't follow the link
+                        clickEvent.preventDefault();
+                        // load the info in #featureinfo
+                        self.setFeatureInfo(this.title);
+                    });
+                    self.featureInfo[lowercaseName] = $('#featureinfo').html();
+                });
+        }
     };
     this.setCoordDisplay = function (x, z) {
         this.coordDisplay.html('x: ' + x + ' z: ' + z);
@@ -515,7 +532,7 @@ $(document).ready(function initialSetup() {
         }
     });
     // reload map data from the database
-    // changed call for debugging
+    // different call for debugging
     // $('#getmapdata').on('click', function reloadMap() {
     //     mainApp.init();
     // });

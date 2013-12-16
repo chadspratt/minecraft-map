@@ -16,18 +16,6 @@
     /*on top of map*/
     z-index: 1;
 }
-#categories {
-    position: absolute;
-    width: 300px;
-    top: 5px;
-    left: 810px;
-}
-#featureinfo {
-    position: absolute;
-    max-width: 600px;
-    top: 250px;
-    left: 810px;
-}
 #coorddisplay {
     position: absolute;
     left: 10px;
@@ -36,6 +24,23 @@
     border: 1px solid #d3d3d3;
     /*on top of map*/
     z-index: 1;
+}
+#categories {
+    position: absolute;
+    width: 300px;
+    top: 5px;
+    left: 810px;
+}
+#addFeature {
+    position: absolute;
+    top: 225px;
+    left: 810px;
+}
+#featureinfo {
+    position: absolute;
+    max-width: 600px;
+    top: 250px;
+    left: 810px;
 }
 #mouseoverbox {
     position: absolute;
