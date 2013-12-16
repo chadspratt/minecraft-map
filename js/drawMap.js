@@ -437,8 +437,8 @@ function MainApp() {
                 $('#featureinfo a').click(function followLink(clickEvent) {
                     // don't follow the link
                     clickEvent.preventDefault();
-                    // call the grandparent function with the link text
-                    self.setFeatureInfo(this.text());
+                    // load the info in #featureinfo
+                    self.setFeatureInfo(this.title);
                 });
             });
     };
