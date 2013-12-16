@@ -498,11 +498,11 @@ $(document).ready(function initialSetup() {
     // commented for debugging
     // mainApp.init();
 
-    $('mapCanvas').on('mousedown', function mouseButtonPressed(event) {
+    $('#mapCanvas').on('mousedown', function mouseButtonPressed(event) {
         mainApp.startMouse(event.pageX, event.pageY);
     });
     $(document.body).on({
-        'mouseover': function bodyMouseover(event) {
+        'mousemove': function bodyMouseover(event) {
             mainApp.moveMouse(event.pageX, event.pageY);
         },
         'mouseup': function bodyMouseup(event) {
