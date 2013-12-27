@@ -205,9 +205,8 @@ function MapCanvas() {
     this.canvas = $('#mapCanvas');
     this.canvasContext = this.canvas[0].getContext('2d');
     canvasOffset = $('#mapCanvas').offset();
-    // this is off by about 5 pixels, 
-    this.x = canvasOffset.left + 5;
-    this.y = canvasOffset.top + 5;
+    this.x = canvasOffset.left;
+    this.y = canvasOffset.top;
     this.mapData = new MapData();
     this.startTranslation = {x: 0, y: 0};
     this.lastTranslation = {x: 0, y: 0};
