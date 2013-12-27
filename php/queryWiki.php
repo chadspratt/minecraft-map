@@ -79,6 +79,18 @@ function get_subcategories($category) {
     return process_response($subcat_response);
 }
 
+function convert_name_to_url($image_name) {
+    $url = NULL;
+    if ($image_name != NULL) {
+        // taken from http://stackoverflow.com/a/4498885/225730
+        $filename = str_replace(' ', '_', $image_name);
+        $digest = md5($filename);
+        $folder = $digest[0] . '/' . $digest[0] . $digest[1] . '/' .  urlencode($filename);
+        $url = 'http://dogtato.net/minecraft/images/' . $folder;
+    }
+    return $url;
+    
+}
 function get_children($category, &$known_categories) {
     $subcategories = get_subcategories($category);
     $children = array();
@@ -89,15 +101,16 @@ function get_children($category, &$known_categories) {
             // strip off 'Category:'
             $sub_name_parts = explode(":", $full_sub_name);
             $sub_name = $sub_name_parts[1];
-            // don't revisit any categories
+            // don't revisit any categories (to prevent loops in the hierarchy)
             if (!in_array($sub_name, $known_categories)) {
-                $icon = $sub_cat["Icon"];
+                $icon_name = $sub_cat["Icon"];
+                $icon_url = convert_name_to_url($icon_name);
                 // features in the subcategory
                 $features = get_features($sub_name);
                 // recurse to traverse all the categories in the tree
                 $grandchildren = get_children($sub_name,
                                               $known_categories);
-                $children[$sub_name] = array("Icon"=>$icon,
+                $children[$sub_name] = array("Icon"=>$icon_url,
                                              "features"=>$features,
                                              "children"=>$grandchildren);
             }
@@ -118,12 +131,13 @@ function get_data_json() {
                                "?Icon");
     $icon_result = process_response(query_wiki($defaut_icon_query));
     $icon = $icon_result["Category:Features"]["Icon"];
+    $icon_url = convert_name_to_url($icon);
     $features = get_features("Features");
     // get all subcategories and their features
     $known_categories = array();
     $children = get_children("Features", $known_categories);
     // store top level category "features"
-    $data["features"] = array("Icon"=>$icon,
+    $data["features"] = array("Icon"=>$icon_url,
                               "features"=>$features,
                               "children"=>$children);
     return json_encode($data);
