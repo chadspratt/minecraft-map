@@ -344,6 +344,10 @@ function MapCanvas() {
         this.canvasContext.setTransform(this.scale, 0, 0, this.scale,
                                         this.lastTranslation.x,
                                         this.lastTranslation.y);
+        this.viewCenter = {
+            x: (this.canvas.width() / 2 - this.lastTranslation.x) / this.scale,
+            y: (this.canvas.height() / 2 - this.lastTranslation.y) / this.scale
+        };
         this.needUpdate = true;
     };
     this.zoomOut = function () {
