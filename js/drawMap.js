@@ -28,6 +28,12 @@ function Boundary(centerX, centerY, width, height, image) {
                 boundary.top < this.bottom &&
                 boundary.bottom > this.top);
     };
+    this.containsCenterOf = function (boundary) {
+        return (boundary.centerX < this.right &&
+                boundary.centerX > this.left &&
+                boundary.centerY < this.bottom &&
+                boundary.centerY > this.top);
+    };
     // for checking mouseover
     this.containsPoint = function (x, y) {
         return (x < this.right &&
@@ -63,7 +69,6 @@ function MapData() {
     this.maps = [];
     this.categories = {};
     this.mapSize = 128 * 8;
-    this.featureIconSize = 10;
     this.boundary = null;
 
     // orders maps from SE to NW, so that NW will be drawn on top of SE
@@ -127,6 +132,7 @@ function MapData() {
         var featureName,
             feature,
             featureBoundary,
+            // return value
             featureBoundaries = {},
             x,
             y;
@@ -141,11 +147,8 @@ function MapData() {
                     if (feature.Icon === null) {
                         feature.Icon = categoryIcon;
                     }
-                    featureBoundary = new Boundary(feature['X coord'],
-                                                   feature['Z coord'],
-                                                   this.featureIconSize,
-                                                   this.featureIconSize,
-                                                   feature.Icon);
+                    // store as point (0 height and width)
+                    featureBoundary = new Boundary(x, y, 0, 0, feature.Icon);
                     featureBoundaries[featureName] = featureBoundary;
                 }
             }
@@ -212,6 +215,7 @@ function MapCanvas() {
     this.scale = 1;
     this.boundary = null;
     this.visibleFeatures = {};
+    this.featureIconSize = 10;
     this.needUpdate = false;
     this.loadMap = function () {
         this.mapData.load();
@@ -259,6 +263,11 @@ function MapCanvas() {
         }
     };
     this._drawFeatures = function () {
+        var // divide by scale to keep the icon size constant
+            featureSize = self.featureIconSize / this.scale,
+            edgeAdjust = featureSize / 2,
+            left,
+            top;
         // store all features that get drawn
         this.visibleFeatures = {};
         // go through each category that's turned on
@@ -267,14 +276,12 @@ function MapCanvas() {
                     category.visible) {
                 $.each(category.features, function (featureName, feature) {
                     if (category.features.hasOwnProperty(featureName) &&
-                            self.boundary.contains(feature)) {
+                            self.boundary.containsCenterOf(feature)) {
+                        left = feature.centerX - edgeAdjust;
+                        top = feature.centerY - edgeAdjust;
                         // draw the feature
-                        self.canvasContext.drawImage(feature.image,
-                                                feature.left,
-                                                feature.top,
-                                                // divide to keep size constant
-                                                feature.width / self.scale,
-                                                feature.height / self.scale);
+                        self.canvasContext.drawImage(feature.image, left, top,
+                                                     featureSize, featureSize);
                         // and store it for checking mouseover
                         self.visibleFeatures[featureName] = feature;
                     }
@@ -284,7 +291,7 @@ function MapCanvas() {
     };
     // this is executed by setInterval so need to use self within
     this.draw = function () {
-        // only redraw when needed (transformation changed, features added)
+        // only redraw when needed (transformation changed, features toggled)
         if (self.needUpdate) {
             self.boundary = new Boundary(self.viewCenter.x, self.viewCenter.y,
                                          self.canvas.width() / self.scale,
@@ -388,6 +395,7 @@ function FeatureInfo() {
             self.load(this.title);
         });
     };
+    // work in progress
     this.redirectForms = function () {
         this.infoArea.find('form').ajaxForm(function formResponse(data) {
             this.infoArea.html(data);
@@ -468,8 +476,9 @@ function MainApp() {
                      'src="' + category.image + '"',
                      'height=10px',
                      'width=10px',
-                     '/>'].join(' ');
-        return '<li><label>' + checkbox + image + category.name + '</label></li>\n';
+                     '/>'].join(' '),
+            checkboxWithLabel = checkbox + image + category.name;
+        return '<li><label>' + checkboxWithLabel + '</label></li>\n';
     };
     this.createCheckboxes = function (categoryName) {
         var category,
