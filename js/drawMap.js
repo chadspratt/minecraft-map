@@ -214,7 +214,7 @@ function MapCanvas() {
     this.scale = 1;
     this.boundary = null;
     this.visibleFeatures = {};
-    this.featureIconSize = 10;
+    this.featureIconSize = 15;
     this.needUpdate = false;
     this.loadMap = function () {
         this.mapData.load();
@@ -565,7 +565,6 @@ function MainApp() {
 $(document).ready(function initialSetup() {
     'use strict';
     mainApp = new MainApp();
-    // commented for debugging
     mainApp.init();
 
     $('#mapCanvas').on({
