@@ -568,8 +568,18 @@ $(document).ready(function initialSetup() {
     // commented for debugging
     mainApp.init();
 
-    $('#mapCanvas').on('mousedown', function mouseButtonPressed(event) {
-        mainApp.startMouse(event.pageX, event.pageY);
+    $('#mapCanvas').on({
+        'mousedown': function canvasMouseButtonPressed(event) {
+            mainApp.startMouse(event.pageX, event.pageY);
+        },
+        // provided by jquery.mousewheel.js
+        'mousewheel': function canvasMouseScrolled(event) {
+            if (event.deltaY > 0) {
+                mainApp.mapCanvas.zoomIn();
+            } else {
+                mainApp.mapCanvas.zoomOut();
+            }
+        }
     });
     $(document.body).on({
         'mousemove': function bodyMouseover(event) {
