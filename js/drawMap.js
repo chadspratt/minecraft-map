@@ -133,7 +133,7 @@ function MapData() {
         // map coordinates of the center of the visible map
         centerX = (minX + maxX) / 2;
         centerY = (minY + maxY) / 2;
-        // the bounds of all map images. arbitrary default view
+        // the bounds of all map images
         this.boundary = new Boundary(centerX, centerY,
                                      maxX - minX, maxY - minY);
     };
@@ -368,8 +368,14 @@ function MapCanvas() {
             y: pageY - this.y - this.startTranslation.y
         };
     };
-    this.zoomIn = function () {
-        this.scale = this.scale * 1.1;
+    this.zoomIn = function (pageX, pageY) {
+        var zoomFactor = 1.1;
+        this.scale = this.scale * zoomFactor;
+        // page - (page - trans) * zoomFactor
+        this.lastTranslation = {
+            x: pageX - (pageX - this.lastTranslation.x) * zoomFactor,
+            y: pageY - (pageY - this.lastTranslation.y) * zoomFactor
+        };
         this.canvasContext.setTransform(this.scale, 0, 0, this.scale,
                                         this.lastTranslation.x,
                                         this.lastTranslation.y);
@@ -379,8 +385,14 @@ function MapCanvas() {
         };
         this.needUpdate = true;
     };
-    this.zoomOut = function () {
-        this.scale = this.scale / 1.1;
+    this.zoomOut = function (pageX, pageY) {
+        var zoomFactor = 1.1;
+        this.scale = this.scale / zoomFactor;
+        // page - (page - trans) / zoomFactor
+        this.lastTranslation = {
+            x: pageX - (pageX - this.lastTranslation.x) / zoomFactor,
+            y: pageY - (pageY - this.lastTranslation.y) / zoomFactor
+        };
         this.canvasContext.setTransform(this.scale, 0, 0, this.scale,
                                         this.lastTranslation.x,
                                         this.lastTranslation.y);
@@ -477,7 +489,6 @@ function MainApp() {
     this.mapCanvas = new MapCanvas();
     this.featureInfo = new FeatureInfo();
     this.coordDisplay = $('#coorddisplay');
-    this.viewCenter = {x: 0, y: 0};
     this.mouseIsDown = false;
     this.clickedFeature = null;
     // set the handlers for when a category is toggled
@@ -597,9 +608,11 @@ $(document).ready(function initialSetup() {
         // provided by jquery.mousewheel.js
         'mousewheel': function canvasMouseScrolled(event) {
             if (event.deltaY > 0) {
-                mainApp.mapCanvas.zoomIn();
+                mainApp.mapCanvas.zoomIn(event.pageX,
+                                         event.pageY);
             } else {
-                mainApp.mapCanvas.zoomOut();
+                mainApp.mapCanvas.zoomOut(event.pageX,
+                                          event.pageY);
             }
         }
     });
@@ -618,10 +631,12 @@ $(document).ready(function initialSetup() {
     // });
     $('#getmapdata').on('click', mainApp.mapCanvas.mapData.load);
     $('#zoom_out').on('click', function zoomOut() {
-        mainApp.mapCanvas.zoomOut();
+        mainApp.mapCanvas.zoomOut(mainApp.mapCanvas.canvas.width() / 2,
+                                  mainApp.mapCanvas.canvas.height() / 2);
     });
     $('#zoom_in').on('click', function zoomIn() {
-        mainApp.mapCanvas.zoomIn();
+        mainApp.mapCanvas.zoomIn(mainApp.mapCanvas.canvas.width() / 2,
+                                  mainApp.mapCanvas.canvas.height() / 2);
     });
     $('#addFeature').on('click', function loadAddFeatureForm() {
         mainApp.featureInfo.loadFeatureForm(null);
