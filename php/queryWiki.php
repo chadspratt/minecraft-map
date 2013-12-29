@@ -53,19 +53,10 @@ function process_response($query_response) {
     return $query_items;
 }
 
-function get_maps() {
-    $map_query = array("[[Category:Maps]]",
-                       "?x coord",
-                       "?z coord",
-                       "?image location");
-    $map_response = query_wiki($map_query);
-    return process_response($map_response);
-}
-
 function get_features($category) {
     $feature_query = array("[[Category:$category]]",
-                           "?x coord",
-                           "?z coord",
+                           "?X coord",
+                           "?Z coord",
                            "?Icon");
 
     $feature_response = query_wiki($feature_query);
@@ -89,8 +80,21 @@ function convert_name_to_url($image_name) {
         $url = 'http://dogtato.net/minecraft/images/' . $folder;
     }
     return $url;
-    
 }
+
+function get_maps() {
+    $map_query = array("[[Category:Maps]]",
+                       "?X coord",
+                       "?Z coord",
+                       "?Image location");
+    $map_response = query_wiki($map_query);
+    $maps = process_response($map_response);
+    foreach ($maps as $mapName => $mapData) {
+        $maps[$mapName]["Image location"] = convert_name_to_url($mapData["Image location"]);
+    }
+    return $maps;
+}
+
 function get_children($category, &$known_categories) {
     $subcategories = get_subcategories($category);
     $children = array();
