@@ -490,7 +490,7 @@ function FeatureInfo() {
                    {title: featureName, action: 'render'})
                    // {title: featureName, printable: 'yes'})
                 .done(function featureInfoLoaded(data) {
-                    var header = '<h3>' + featureName + '</h3><br />';
+                    var header = '<h2>' + featureName + '</h2>';
                     self.infoArea.html(header + data);
                     // remove any edit links
                     self.infoArea.find('span.editsection').remove();
