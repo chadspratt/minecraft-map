@@ -39,11 +39,16 @@ function Boundary(centerX, centerY, width, height) {
 
 function MapImagery(centerX, centerY, imageURL) {
     'use strict';
-    var mapSize = 128 * 8;
+    // +3 is to give a little overlap to images that only exactly match edges
+    // not sure whether to keep
+    var self = this,
+        mapSize = 128 * 8 + 3;
+    this.ready = false;
     this.boundary = new Boundary(centerX, centerY, mapSize, mapSize);
     this.image = document.createElement('img');
     this.image.onload = function () {
         mainApp.mapCanvas.needUpdate = true;
+        self.ready = true;
     };
     this.image.src = imageURL;
 }
@@ -51,10 +56,12 @@ function MapImagery(centerX, centerY, imageURL) {
 function Feature(x, y, imageURL) {
     'use strict';
     var self = this;
+    this.ready = false;
     this.image = document.createElement('img');
     this.image.onload = function () {
         self.boundary = new Boundary(x, y, this.width, this.height);
         mainApp.mapCanvas.needUpdate = true;
+        self.ready = true;
     };
     this.image.src = imageURL;
     this.distanceFrom = function (x1, y1) {
@@ -193,6 +200,7 @@ function MapData() {
         var data = JSON.parse(dataJson);
         // clear the data structures for storing all the data
         this.categories = {};
+        this.maps = [];
         this.processMapData(data.maps);
         this.processCategory('Features', data.features, data.features.Icon);
         $(this).trigger('dataLoaded');
@@ -263,7 +271,8 @@ function MapCanvas() {
         for (i = 0; i < this.mapData.maps.length; i += 1) {
             mapImagery = this.mapData.maps[i];
             // check that map will be visible
-            if (this.boundary.contains(mapImagery.boundary)) {
+            if (mapImagery.ready &&
+                this.boundary.contains(mapImagery.boundary)) {
                 this.canvasContext.drawImage(mapImagery.image,
                                              mapImagery.boundary.left,
                                              mapImagery.boundary.top,
@@ -288,6 +297,7 @@ function MapCanvas() {
                     category.visible) {
                 $.each(category.features, function (featureName, feature) {
                     if (category.features.hasOwnProperty(featureName) &&
+                            feature.ready &&
                             self.boundary.containsCenterOf(feature.boundary)) {
                         // scale so the largest dimension is featureSize
                         if (feature.boundary.width > feature.boundary.height){
@@ -431,25 +441,35 @@ function FeatureInfo() {
     };
     // work in progress
     this.redirectForms = function () {
-        this.infoArea.find('form').ajaxForm(function formResponse(data) {
-            this.infoArea.html(data);
-            this.redirectForms();
+        $('#featureinfo form').ajaxForm({
+            target: '#featureinfo',
+            success: function formResponse(data) {
+                alert(data);
+                self.redirectForms();
+            }
         });
     };
     this.loadFeatureForm = function (featureName) {
-        var pageTitle;
-        if (featureName === null) {
-            pageTitle = 'AddFeature';
-        } else {
-            pageTitle = 'Special:FormEdit/Feature/' + featureName;
-        }
-        $.post('http://dogtato.net/minecraft/index.php',
-               {title: pageTitle, action: 'render'})
-               // {title: featureName, printable: 'yes'})
-            .done(function featureFormLoaded(data) {
-                self.infoArea.html(data);
-                self.redirectForms();
-            });
+        self.infoArea.html('<iframe src="http://dogtato.net/minecraft/index.php?title=Form:Feature&action=render" height=600 width=400></iframe>');
+        // var pageTitle;
+        // if (featureName === null) {
+        //     pageTitle = 'Form:Feature';
+        // } else {
+        //     pageTitle = 'Special:FormEdit/Feature/' + featureName;
+        // }
+        // $.post('http://dogtato.net/minecraft/index.php',
+        //        {title: pageTitle, action: 'render'})
+        //        // {title: featureName, printable: 'yes'})
+        //     .done(function featureFormLoaded(data) {
+        //         self.infoArea.html(data);
+        //         self.redirectForms();
+        //     });
+    };
+    this.loadCategoryForm = function (featureName) {
+        self.infoArea.html('<iframe src="http://dogtato.net/minecraft/index.php?title=Form:Feature_Category&action=render" height=600 width=400></iframe>');
+    };
+    this.loadMapForm = function (featureName) {
+        self.infoArea.html('<iframe src="http://dogtato.net/minecraft/index.php?title=Form:Map&action=render" height=600 width=400></iframe>');
     };
     this.load = function (featureName) {
         // standardize the case for caching
@@ -640,5 +660,11 @@ $(document).ready(function initialSetup() {
     });
     $('#addFeature').on('click', function loadAddFeatureForm() {
         mainApp.featureInfo.loadFeatureForm(null);
+    });
+    $('#addCategory').on('click', function loadAddCategoryForm() {
+        mainApp.featureInfo.loadCategoryForm(null);
+    });
+    $('#addMap').on('click', function loadAddMapForm() {
+        mainApp.featureInfo.loadMapForm(null);
     });
 });
