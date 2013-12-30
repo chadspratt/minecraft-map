@@ -1,4 +1,4 @@
-#mapCanvas {
+#mapcanvas {
     position: absolute;
     top: 0px;
     left: 0px;
@@ -31,7 +31,7 @@
     top: 5px;
     left: 810px;
 }
-#addData {
+#adddata {
     position: absolute;
     top: 225px;
     left: 810px;
@@ -39,7 +39,7 @@
 #featureinfo {
     position: absolute;
     max-width: 600px;
-    top: 250px;
+    top: 265px;
     left: 810px;
 }
 #mouseoverbox {

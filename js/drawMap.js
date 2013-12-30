@@ -213,15 +213,23 @@ function MapData() {
                 self.processData(data);
             });
     };
+    this.update = function () {
+        // load json from sql database through php
+        $.post('http://dogtato.net/mcmap/php/mapData.php',
+               {action: 'update'})
+            .done(function mapDataReceived(data) {
+                self.processData(data);
+            });
+    };
 }
 
 function MapCanvas() {
     'use strict';
     var self = this,
         canvasOffset;
-    this.canvas = $('#mapCanvas');
+    this.canvas = $('#mapcanvas');
     this.canvasContext = this.canvas[0].getContext('2d');
-    canvasOffset = $('#mapCanvas').offset();
+    canvasOffset = $('#mapcanvas').offset();
     this.x = canvasOffset.left;
     this.y = canvasOffset.top;
     this.mapData = new MapData();
@@ -621,7 +629,7 @@ $(document).ready(function initialSetup() {
     mainApp = new MainApp();
     mainApp.init();
 
-    $('#mapCanvas').on({
+    $('#mapcanvas').on({
         'mousedown': function canvasMouseButtonPressed(event) {
             mainApp.startMouse(event.pageX, event.pageY);
         },
@@ -649,22 +657,23 @@ $(document).ready(function initialSetup() {
     // $('#getmapdata').on('click', function reloadMap() {
     //     mainApp.init();
     // });
-    $('#getmapdata').on('click', mainApp.mapCanvas.mapData.load);
-    $('#zoom_out').on('click', function zoomOut() {
+    $('#reloaddata').on('click', mainApp.mapCanvas.mapData.load);
+    $('#updatedata').on('click', mainApp.mapCanvas.mapData.update);
+    $('#zoomout').on('click', function zoomOut() {
         mainApp.mapCanvas.zoomOut(mainApp.mapCanvas.canvas.width() / 2,
                                   mainApp.mapCanvas.canvas.height() / 2);
     });
-    $('#zoom_in').on('click', function zoomIn() {
+    $('#zoomin').on('click', function zoomIn() {
         mainApp.mapCanvas.zoomIn(mainApp.mapCanvas.canvas.width() / 2,
                                   mainApp.mapCanvas.canvas.height() / 2);
     });
-    $('#addFeature').on('click', function loadAddFeatureForm() {
+    $('#addfeature').on('click', function loadAddFeatureForm() {
         mainApp.featureInfo.loadFeatureForm(null);
     });
-    $('#addCategory').on('click', function loadAddCategoryForm() {
+    $('#addcategory').on('click', function loadAddCategoryForm() {
         mainApp.featureInfo.loadCategoryForm(null);
     });
-    $('#addMap').on('click', function loadAddMapForm() {
+    $('#addmap').on('click', function loadAddMapForm() {
         mainApp.featureInfo.loadMapForm(null);
     });
 });
