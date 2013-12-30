@@ -6,40 +6,50 @@
     /*on bottom*/
     z-index: 0;
 }
+#mapoverlay {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 800px;
+    height: 600px;
+    /*on top of map*/
+    z-index: 1;
+}
 #mapcontrols {
     position: absolute;
     top: 10px;
     left: 10px;
     max-width: 100px;
-    background-color: #ffffff;
-    border: 1px solid #d3d3d3;
-    /*on top of map*/
-    z-index: 1;
 }
 #coorddisplay {
     position: absolute;
     left: 10px;
-    top: 565px;
-    background-color: #ffffff;
-    border: 1px solid #d3d3d3;
-    /*on top of map*/
-    z-index: 1;
+    bottom: 10px;
+    max-width: 200px;
 }
-#categories {
+#upperrightcontrols {
     position: absolute;
-    width: 300px;
-    top: 5px;
-    left: 810px;
+    top: 10px;
+    right: 10px;
 }
-#adddata {
+#layerbox,
+#editbox{
+    float: right;
+    clear: right;
+}
+#layerheader,
+#editheader{
+    text-align: right;
+}
+#updatedata {
     position: absolute;
-    top: 225px;
+    top: 10px;
     left: 810px;
 }
 #featureinfo {
     position: absolute;
     max-width: 600px;
-    top: 265px;
+    top: 30px;
     left: 810px;
 }
 #mouseoverbox {
@@ -49,8 +59,14 @@
     left: -1000px;
 /*    width: 200px;
     height: 20px;*/
-    background-color: #ffffff;
-    border: 1px solid #d3d3d3;
     /*on top of everything else*/
     z-index: 2;
+}
+.links {
+    cursor: pointer;
+    text-decoration: underline;
+}
+.overlayitem {
+    background-color: #ffffff;
+    border: 1px solid #d3d3d3;
 }

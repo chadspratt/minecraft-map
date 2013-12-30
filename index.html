@@ -9,21 +9,37 @@
   <!--   // <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script> -->
 </head>
 <body>
-<div id="mapcontrols">
-  <div id="reloaddata" style="cursor: pointer; text-decoration: underline">reload map</div>
-  Zoom:
-  <span id="zoomout" style="cursor: pointer; text-decoration: underline">
-    -
-  </span>
-  <span id="zoomin" style="cursor: pointer; text-decoration: underline">
-    +
-  </span>
-</div><br>
 <canvas id="mapcanvas" width="800" height="600">
 Your browser does not support the HTML5 canvas tag.</canvas>
-<div id="coorddisplay"></div>
-<div id="categories"></div>
-<div id="adddata">Add: <span id="addfeature" style="cursor: pointer; text-decoration: underline">Feature</span>, <span id="addcategory" style="cursor: pointer; text-decoration: underline">Category</span>, <span id="addmap" style="cursor: pointer; text-decoration: underline">Map</span><br><span id="updatedata" style="cursor: pointer; text-decoration: underline">really reload map</span></div>
+<div id="mapoverlay">
+  <div id="mapcontrols" class="overlayitem">
+    <div id="reloaddata" class="links">reload map</div>
+    Zoom:
+    <span id="zoomout" class="links">
+      -
+    </span>
+    <span id="zoomin" class="links">
+      +
+    </span>
+  </div><br>
+  <div id="coorddisplay" class="overlayitem">x: z:</div>
+  <div id="upperrightcontrols">
+    <div id="layerbox" class="overlayitem">
+      <div id="layerheader" class="links"><right>Map Layers</right></div>
+      <div id="layerlist"></div>
+    </div>
+    <br>
+    <div id="editbox" class="overlayitem">
+      <div id="editheader" class="links"><right>Edit Data</right></div>
+      <div id="editlist">
+        <span id="addfeature" class="links">Feature</span>,
+        <span id="addcategory" class="links">Category</span>,
+        <span id="addmap" class="links">Map</span><br>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="updatedata" class="links">update data from wiki</div>
 <div id="featureinfo">Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod
 tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,
 quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
@@ -31,7 +47,7 @@ consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse
 cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non
 proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</div>
 <div id="debugarea"></div>
-<div id="mouseoverbox"></div>
+<div id="mouseoverbox" class="overlayitem"></div>
 
 <script src="./js/drawMap.js"></script>
 </body>

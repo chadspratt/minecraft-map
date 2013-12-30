@@ -541,7 +541,7 @@ function MainApp() {
             checkboxWithLabel = checkbox + image + category.name;
         return '<li><label>' + checkboxWithLabel + '</label></li>\n';
     };
-    this.createCheckboxes = function (categoryName) {
+    this.createCheckboxList = function (categoryName) {
         var category,
             subcategory,
             checkBoxHtml = '<ul>\n',
@@ -550,16 +550,20 @@ function MainApp() {
         checkBoxHtml += this.createCheckBox(category);
         for (i = 0; i < category.children.length; i += 1) {
             subcategory = category.children[i];
-            checkBoxHtml += this.createCheckboxes(subcategory);
+            // recurse over children
+            checkBoxHtml += this.createCheckboxList(subcategory);
         }
         checkBoxHtml += '</ul>\n';
         return checkBoxHtml;
     };
+    this.createCheckboxes = function () {
+        $('#layerlist').html(this.createCheckboxList('Features'));
+        this.setCheckboxHandlers();
+    };
     this.init = function () {
         this.mapCanvas.loadMap();
         $(this.mapCanvas).on('canvasReady', function mapCanvasReady() {
-            $('#categories').html(self.createCheckboxes('Features'));
-            self.setCheckboxHandlers();
+            self.createCheckboxes();
             setInterval(self.mapCanvas.draw, 100); // start drawing
         });
     };
@@ -629,7 +633,7 @@ $(document).ready(function initialSetup() {
     mainApp = new MainApp();
     mainApp.init();
 
-    $('#mapcanvas').on({
+    $('#mapoverlay').on({
         'mousedown': function canvasMouseButtonPressed(event) {
             mainApp.startMouse(event.pageX, event.pageY);
         },
@@ -666,6 +670,16 @@ $(document).ready(function initialSetup() {
     $('#zoomin').on('click', function zoomIn() {
         mainApp.mapCanvas.zoomIn(mainApp.mapCanvas.canvas.width() / 2,
                                   mainApp.mapCanvas.canvas.height() / 2);
+    });
+    // hide initially
+    $('#layerlist').slideToggle();
+    $('#layerheader').on('click', function showMapLayers() {
+        $('#layerlist').slideToggle();
+    });
+    // hide initially
+    $('#editlist').slideToggle();
+    $('#editheader').on('click', function showEditLinks() {
+        $('#editlist').slideToggle();
     });
     $('#addfeature').on('click', function loadAddFeatureForm() {
         mainApp.featureInfo.loadFeatureForm(null);
