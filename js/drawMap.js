@@ -1,5 +1,7 @@
 /*global $ */
-var mainApp;
+var mainApp,
+    // used for a popup for adding/editing wiki data
+    editWindow = null;
 
 function Boundary(centerX, centerY, width, height) {
     'use strict';
@@ -447,37 +449,45 @@ function FeatureInfo() {
             self.load(this.title);
         });
     };
-    // work in progress
-    this.redirectForms = function () {
-        $('#featureinfo form').ajaxForm({
-            target: '#featureinfo',
-            success: function formResponse(data) {
-                alert(data);
-                self.redirectForms();
+    this.loadForm = function (formName) {
+        var instructions,
+            initialValue = '',
+            form,
+            formArea = $('#editprompt');
+        if (formName === 'Map') {
+            initialValue = 'Map_';
+        }
+        // preliminary form to ask for the name of the data to create/edit
+        form = ['<form action="http://dogtato.net/minecraft/index.php?title=Special:FormStart" method="get">',
+                    '<input size="25" value="' + initialValue + '" class="formInput" name="page_name" />',
+                    '<input type="hidden" value="Special:FormStart" name="title" />',
+                    '<input type="hidden" value="' + formName + '" name="form" />',
+                    '<input type="submit" value="Create or edit" />',
+                '</form>'].join(' ');
+        if (formName === 'Map') {
+            instructions = 'Map number:';
+        } else if (formName === 'Feature') {
+            instructions = 'Feature name:';
+        } else if (formName === 'Feature_Category') {
+            instructions = 'Category name:';
+        }
+        formArea.html(instructions + form);
+        formArea.slideDown(100);
+        formArea.find('form').ajaxForm(function formResponse (data) {
+            var url = 'http://dogtato.net/minecraft/index.php',
+                pageName = data.match(/index\.php\?title\=([^"]+)/)[1],
+                fullurl = url + '?title=' + pageName;
+            // global editWindow
+            if (editWindow === null || editWindow.closed) {
+                editWindow = window.open(fullurl,
+                                         'editWindow',"width=800,height=700");
+            } else {
+                editWindow.location.href = fullurl;
             }
+            // could use this on the form that's loaded to show the update
+            // on the map immediately
+            // this.infoArea.find('form').ajaxForm(function formResponse (data) {
         });
-    };
-    this.loadFeatureForm = function (featureName) {
-        self.infoArea.html('<iframe src="http://dogtato.net/minecraft/index.php?title=Form:Feature&action=render" height=600 width=400></iframe>');
-        // var pageTitle;
-        // if (featureName === null) {
-        //     pageTitle = 'Form:Feature';
-        // } else {
-        //     pageTitle = 'Special:FormEdit/Feature/' + featureName;
-        // }
-        // $.post('http://dogtato.net/minecraft/index.php',
-        //        {title: pageTitle, action: 'render'})
-        //        // {title: featureName, printable: 'yes'})
-        //     .done(function featureFormLoaded(data) {
-        //         self.infoArea.html(data);
-        //         self.redirectForms();
-        //     });
-    };
-    this.loadCategoryForm = function (featureName) {
-        self.infoArea.html('<iframe src="http://dogtato.net/minecraft/index.php?title=Form:Feature_Category&action=render" height=600 width=400></iframe>');
-    };
-    this.loadMapForm = function (featureName) {
-        self.infoArea.html('<iframe src="http://dogtato.net/minecraft/index.php?title=Form:Map&action=render" height=600 width=400></iframe>');
     };
     this.load = function (featureName) {
         // standardize the case for caching
@@ -657,7 +667,7 @@ $(document).ready(function initialSetup() {
         }
     });
     // reload map data from the database
-    // different call for debugging
+    // for debugging
     // $('#getmapdata').on('click', function reloadMap() {
     //     mainApp.init();
     // });
@@ -671,23 +681,29 @@ $(document).ready(function initialSetup() {
         mainApp.mapCanvas.zoomIn(mainApp.mapCanvas.canvas.width() / 2,
                                   mainApp.mapCanvas.canvas.height() / 2);
     });
-    // hide initially
-    $('#layerlist').slideToggle();
+    $('#layerlist').hide();
     $('#layerheader').on('click', function showMapLayers() {
         $('#layerlist').slideToggle();
     });
-    // hide initially
-    $('#editlist').slideToggle();
-    $('#editheader').on('click', function showEditLinks() {
-        $('#editlist').slideToggle();
+    $('#editlist').hide();
+    $('#editheader').on('click', function toggleEditLinks() {
+        $('#editprompt').hide(0, function hideEditList() {
+            $('#editlist').slideToggle(100);
+        });
     });
+    // annoying
+    // $('#editbox').on('mouseleave', function hideEditPrompt() {
+    //     $('#editprompt').slideUp(100, function hideEditList() {
+    //         $('#editlist').slideUp(100);
+    //     });
+    // });
     $('#addfeature').on('click', function loadAddFeatureForm() {
-        mainApp.featureInfo.loadFeatureForm(null);
+        mainApp.featureInfo.loadForm('Feature');
     });
     $('#addcategory').on('click', function loadAddCategoryForm() {
-        mainApp.featureInfo.loadCategoryForm(null);
+        mainApp.featureInfo.loadForm('Feature_Category');
     });
     $('#addmap').on('click', function loadAddMapForm() {
-        mainApp.featureInfo.loadMapForm(null);
+        mainApp.featureInfo.loadForm('Map');
     });
 });

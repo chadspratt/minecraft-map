@@ -38,7 +38,8 @@
     clear: right;
 }
 #layerheader,
-#editheader{
+#editheader,
+#editlist {
     text-align: right;
 }
 #updatedata {
