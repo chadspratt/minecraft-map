@@ -41,8 +41,6 @@ function Boundary(centerX, centerY, width, height) {
 
 function MapImagery(centerX, centerY, zoomLevel, imageURL) {
     'use strict';
-    // +3 is to give a little overlap to images that only exactly match edges
-    // not sure whether to keep
     var self = this,
         mapSize = 128 * Math.pow(2, zoomLevel);
     this.ready = false;
@@ -460,16 +458,20 @@ function FeatureInfo() {
     this.loadForm = function (formName) {
         var instructions,
             initialValue = '',
+            extraInput = '',
             form,
             formArea = $('#editprompt');
         if (formName === 'Map') {
             initialValue = 'Map_';
+        } else if (formName === 'Feature_Category') {
+            extraInput = '<input type="hidden" value="Category" name="namespace" />'
         }
         // preliminary form to ask for the name of the data to create/edit
         form = ['<form action="http://dogtato.net/minecraft/index.php?title=Special:FormStart" method="get">',
                     '<input size="25" value="' + initialValue + '" class="formInput" name="page_name" />',
                     '<input type="hidden" value="Special:FormStart" name="title" />',
                     '<input type="hidden" value="' + formName + '" name="form" />',
+                    extraInput,
                     '<input type="submit" value="Create or edit" />',
                 '</form>'].join(' ');
         if (formName === 'Map') {
