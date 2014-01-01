@@ -39,14 +39,15 @@ function Boundary(centerX, centerY, width, height) {
     };
 }
 
-function MapImagery(centerX, centerY, imageURL) {
+function MapImagery(centerX, centerY, zoomLevel, imageURL) {
     'use strict';
     // +3 is to give a little overlap to images that only exactly match edges
     // not sure whether to keep
     var self = this,
-        mapSize = 128 * 8 + 3;
+        mapSize = 128 * Math.pow(2, zoomLevel);
     this.ready = false;
     this.boundary = new Boundary(centerX, centerY, mapSize, mapSize);
+    this.zoomLevel = zoomLevel;
     this.image = document.createElement('img');
     this.image.onload = function () {
         mainApp.mapCanvas.needUpdate = true;
@@ -97,14 +98,20 @@ function MapData() {
     // this is to cover "map_x" text in the top left corner of each map
     this.sortMaps = function (a, b) {
         var comparator = 0;
-        // compare based on the coordinates with a bigger difference
-        if (Math.abs(a.boundary.left - b.boundary.left) >
-                Math.abs(a.boundary.top - b.boundary.top)) {
-            // sort descending (east to west)
-            comparator =  b.boundary.left - a.boundary.left;
+        // draw low zoom[out] maps above high
+        if (a.zoomLevel !== b.zoomLevel) {
+            comparator = b.zoomLevel - a.zoomLevel;
+        // for legacy maps that have text in upper left corner
         } else {
-            // sort descending (south to north)
-            comparator = b.boundary.top - a.boundary.top;
+            // compare based on the coordinates with a bigger difference
+            if (Math.abs(a.boundary.left - b.boundary.left) >
+                    Math.abs(a.boundary.top - b.boundary.top)) {
+                // sort descending (east to west)
+                comparator =  b.boundary.left - a.boundary.left;
+            } else {
+                // sort descending (south to north)
+                comparator = b.boundary.top - a.boundary.top;
+            }
         }
         return comparator;
     };
@@ -120,6 +127,7 @@ function MapData() {
             if (mapData.hasOwnProperty(mapName)) {
                 mapImage = new MapImagery(map['X coord'],
                                           map['Z coord'],
+                                          map['Zoom level'],
                                           map['Image location']);
                 // store in an array for ordered drawing later
                 self.maps.push(mapImage);
@@ -483,6 +491,7 @@ function FeatureInfo() {
                                          'editWindow',"width=800,height=700");
             } else {
                 editWindow.location.href = fullurl;
+                editWindow.focus();
             }
             // could use this on the form that's loaded to show the update
             // on the map immediately

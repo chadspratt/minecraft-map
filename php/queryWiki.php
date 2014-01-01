@@ -3,6 +3,7 @@
 // semantic mediawiki uses hyphens in character codes
 function encode_query($raw_query) {
     $encoded_query = $raw_query;
+    $encoded_query = str_replace("-", "-2D", $encoded_query);
     $encoded_query = str_replace("[", "-5B", $encoded_query);
     $encoded_query = str_replace("]", "-5D", $encoded_query);
     $encoded_query = str_replace("?", "-3F", $encoded_query);
@@ -53,12 +54,11 @@ function process_response($query_response) {
     return $query_items;
 }
 
-function get_features($category) {
-    $feature_query = array("[[Category:$category]]",
+function get_features($category, $world) {
+    $feature_query = array("[[Category:$category]] [[Category:$world]]",
                            "?X coord",
                            "?Z coord",
                            "?Icon");
-
     $feature_response = query_wiki($feature_query);
     return process_response($feature_response);
 }
@@ -82,10 +82,11 @@ function convert_name_to_url($image_name) {
     return $url;
 }
 
-function get_maps() {
-    $map_query = array("[[Category:Maps]]",
+function get_maps($world) {
+    $map_query = array("[[Category:Maps]] [[Category:$world]]",
                        "?X coord",
                        "?Z coord",
+                       "?Zoom level",
                        "?Image location");
     $map_response = query_wiki($map_query);
     $maps = process_response($map_response);
@@ -95,7 +96,7 @@ function get_maps() {
     return $maps;
 }
 
-function get_children($category, &$known_categories) {
+function get_children($category, &$known_categories, $world) {
     $subcategories = get_subcategories($category);
     $children = array();
     if ($subcategories != NULL) {
@@ -110,10 +111,11 @@ function get_children($category, &$known_categories) {
                 $icon_name = $sub_cat["Icon"];
                 $icon_url = convert_name_to_url($icon_name);
                 // features in the subcategory
-                $features = get_features($sub_name);
+                $features = get_features($sub_name, $world);
                 // recurse to traverse all the categories in the tree
                 $grandchildren = get_children($sub_name,
-                                              $known_categories);
+                                              $known_categories,
+                                              $world);
                 $children[$sub_name] = array("Icon"=>$icon_url,
                                              "features"=>$features,
                                              "children"=>$grandchildren);
@@ -123,11 +125,11 @@ function get_children($category, &$known_categories) {
     return $children;
 }
 
-function get_data_json() {
+function get_data_json($world) {
     $data = array();
 
     // store the maps
-    $data["maps"] = get_maps();
+    $data["maps"] = get_maps($world);
 
     // get all the categories and their features
     $categories = array();
@@ -136,10 +138,10 @@ function get_data_json() {
     $icon_result = process_response(query_wiki($defaut_icon_query));
     $icon = $icon_result["Category:Features"]["Icon"];
     $icon_url = convert_name_to_url($icon);
-    $features = get_features("Features");
+    $features = get_features("Features", $world);
     // get all subcategories and their features
     $known_categories = array();
-    $children = get_children("Features", $known_categories);
+    $children = get_children("Features", $known_categories, $world);
     // store top level category "features"
     $data["features"] = array("Icon"=>$icon_url,
                               "features"=>$features,
