@@ -125,6 +125,7 @@ function MapData() {
             if (mapData.hasOwnProperty(mapName)) {
                 mapImage = new MapImagery(map['X coord'],
                                           map['Z coord'],
+                                          map['Zoom level'],
                                           map['Image location']);
                 // store in an array for ordered drawing later
                 self.maps.push(mapImage);
