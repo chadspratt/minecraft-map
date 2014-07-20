@@ -18,7 +18,7 @@ if ($action == "get") {
 }
 else if ($action == "update") {
     // get refreshed data from the wiki
-    $data_json = get_data_json();
+    $data_json = get_data_json("H-verse");
     // cache it in the database
     add_json_to_sql("alldata", $data_json);
     echo $data_json;

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
-<html>
+<html lang="en-US">
+<meta charset="utf-8">
 <head>
   <link rel="stylesheet" type="text/css" href="./style.css">
   <!-- third party javascript -->
@@ -8,44 +9,50 @@
   <script src="./js/jquery.form.js"></script>
   <!-- <script src="./js/jquery-ui-1.10.3.custom.js"></script> -->
   <!--   // <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script> -->
+
+  <script src="./js/d3.js"></script>
+  <script src="./js/drawMap.js"></script>
 </head>
 <body>
-<canvas id="mapcanvas" width="800" height="600">
-Your browser does not support the HTML5 canvas tag.</canvas>
+<svg id="mapcanvas">
+    <g id="mapImageGroup"></g>
+    <g id="featureGroup"></g>
+</svg>
+<!-- <canvas id="mapcanvas" width="800" height="600"> -->
+<!-- <canvas id="mapcanvas" width="100%" height="100%"> -->
+<!-- Your browser does not support the HTML5 canvas tag.</canvas> -->
 <div id="mapoverlay">
   <div id="mapcontrols" class="overlayitem">
-    <div id="reloaddata" class="links">reload map</div>
-    Zoom:
-    <span id="zoomout" class="links">
+    <!-- <div id="reloaddata" class="links">reload map</div>
+    Zoom: -->
+    <div id="updatedata" class="links">refresh</div>
+    <button id="zoomout">
       -
-    </span>
-    <span id="zoomin" class="links">
+    </button>
+    <button id="zoomin">
       +
-    </span>
-  </div><br>
+    </button>
+  </div>
   <div id="coorddisplay" class="overlayitem">x: z:</div>
   <div id="upperrightcontrols">
     <div id="layerbox" class="overlayitem">
       <div id="layerheader" class="links"><right>Map Layers</right></div>
       <div id="layerlist"></div>
     </div>
-    <br>
     <div id="editbox" class="overlayitem">
-      <div id="editheader" class="links"><right>Edit Data</right></div>
+      <div id="editheader" class="links"><right>Add/Edit Data</right></div>
       <div id="editlist">
         <span id="addfeature" class="links">Feature</span>,
         <span id="addcategory" class="links">Category</span>,
-        <span id="addmap" class="links">Map</span><br>
+        <span id="addmap" class="links">Map</span>
       </div>
       <div id="editprompt"></div>
     </div>
   </div>
 </div>
-<div id="updatedata" class="links">update data from wiki</div>
 <div id="featureinfo"></div>
 <div id="debugarea"></div>
 <div id="mouseoverbox" class="overlayitem"></div>
 
-<script src="./js/drawMap.js"></script>
 </body>
 </html>
