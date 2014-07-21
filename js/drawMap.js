@@ -235,7 +235,7 @@ function MapCanvas() {
     'use strict';
     var self = this;
     // set in init()
-    this.canvas = null;
+    this.svg = null;
     this.x = null;
     this.y = null;
     this.mapData = null;
@@ -260,17 +260,63 @@ function MapCanvas() {
         x = w.innerWidth || e.clientWidth || g.clientWidth;
         y = w.innerHeight|| e.clientHeight|| g.clientHeight;
 
-        this.canvas.attr("width", x)
+        self.svg.attr("width", x)
                    .attr("height", y);
         d3.select('#mapoverlay').attr("width", x)
                                 .attr("height", y);
+        self.updateScale();
+    };
+    this.updateScale = function () {
+        var viewBoxStr = self.svg.attr('viewBox'),
+            viewBoxComponents,
+            viewBoxWidth,
+            viewBoxHeight,
+            svgWidth,
+            svgHeight,
+            featureSize,
+            featureWidth,
+            featureHeight;
+        if (viewBoxStr !== null) {
+            viewBoxComponents = viewBoxStr.split(' ');
+            viewBoxWidth = viewBoxComponents[2];
+            viewBoxHeight = viewBoxComponents[3];
+            svgWidth = self.svg.attr('width');
+            svgHeight = self.svg.attr('height');
+            self.scale = Math.min(svgHeight / viewBoxHeight, svgWidth / viewBoxWidth);
+            featureSize = self.featureIconSize / self.scale,
+            d3.selectAll('#featureGroup image')
+                // scale so the largest dimension is featureSize
+                .attr('width', function (d) {
+                    if (d.feature.boundary.width > d.feature.boundary.height) {
+                        featureWidth = featureSize;
+                    }
+                    else {
+                        featureWidth = featureSize * d.feature.boundary.width / d.feature.boundary.height;
+                    }
+                    return featureWidth;
+                })
+                .attr('height', function (d) {
+                    if (d.feature.boundary.width > d.feature.boundary.height) {
+                        featureHeight = featureSize;
+                    }
+                    else {
+                        featureHeight = featureSize * d.feature.boundary.height / d.feature.boundary.width;
+                    }
+                    return featureHeight;
+                })
+                .attr('x', function (d) {
+                    return d.feature.boundary.centerX - featureWidth / 2;
+                })
+                .attr('y', function (d) {
+                    return d.feature.boundary.centerY - featureHeight / 2;
+                });
+        }
     };
     this.init = function () {
         var canvasOffset;
-        this.canvas = d3.select('#mapcanvas');
+        this.svg = d3.select('#mapcanvas');
         this.resizeSVG();
         window.onresize = this.resizeSVG;
-        // this.canvasContext = this.canvas[0].getContext('2d');
         canvasOffset = $('#mapcanvas').offset();
         this.x = canvasOffset.left;
         this.y = canvasOffset.top;
@@ -279,13 +325,14 @@ function MapCanvas() {
     this.loadMap = function () {
         this.mapData.load();
         $(this.mapData).on('dataLoaded', function mapDataLoaded() {
-            self.canvas.attr('viewBox', function() {
+            self.svg.attr('viewBox', function() {
                 return self.mapData.boundary.left + ' ' +
                        self.mapData.boundary.top + ' ' +
                        self.mapData.boundary.width + ' ' +
                        self.mapData.boundary.height;
             })
                 .attr('preserveAspectRatio', 'xMidYMid');
+            self.updateScale();
             // // set initial transformation
             // self.viewCenter = {x: self.mapData.boundary.centerX,
             //                    y: self.mapData.boundary.centerY};
@@ -311,7 +358,7 @@ function MapCanvas() {
     //     this.canvasContext.setTransform(1, 0, 0, 1, 0, 0);
     //     this.canvasContext.fillStyle = '#FFFFFF';
     //     this.canvasContext.fillRect(0, 0,
-    //                                 this.canvas.width(), this.canvas.height());
+    //                                 this.svg.width(), this.svg.height());
     //     // reapply scale and translation
     //     this.canvasContext.restore();
     // };
@@ -358,41 +405,59 @@ function MapCanvas() {
             width,
             height,
             categories = d3.select('#featureGroup').selectAll('g')
-                .data(this.mapData.categories)
+                .data(function convertCategoriesToArray() {
+                    var categoryArray = [];
+                    $.each(self.mapData.categories, function (categoryName, category) {
+                        if (self.mapData.categories.hasOwnProperty(categoryName)) {
+                            categoryArray.push({'name': categoryName,
+                                                'features': category.features});
+                        }
+                    });
+                    return categoryArray;
+                })
               .enter().append('g')
                 .attr('categoryId', function (d, i) {
                     return 'featureCategory' + i;
                 });
         categories.selectAll('image')
-            .data(function (d) { return d.features; })
+            .data(function (d) {
+                var featureArray = [];
+                $.each(d.features, function (featureName, feature) {
+                    if (d.features.hasOwnProperty(featureName)) {
+                        featureArray.push({'name': featureName,
+                                           'feature': feature});
+                    }
+                });
+                return featureArray;
+            })
           .enter().append('image')
             .attr('xlink:href', function (d) {
-                return d.image;
+                return d.feature.image.src;
             })
             // scale so the largest dimension is featureSize
             .attr('width', function (d) {
-                if (d.boundary.width > d.boundary.height) {
+                if (d.feature.boundary.width > d.feature.boundary.height) {
                     width = featureSize;
                 }
                 else {
-                    width = featureSize * d.boundary.width / d.boundary.height;
+                    width = featureSize * d.feature.boundary.width / d.feature.boundary.height;
                 }
                 return width;
             })
             .attr('height', function (d) {
-                if (d.boundary.width > d.boundary.height) {
+                if (d.feature.boundary.width > d.feature.boundary.height) {
                     height = featureSize;
                 }
                 else {
-                    height = featureSize * d.boundary.height / d.boundary.width;
+                    height = featureSize * d.feature.boundary.height / d.feature.boundary.width;
                 }
                 return height;
             })
             .attr('x', function (d) {
-                return d.boundary.centerX - width / 2;
+                return d.feature.boundary.centerX - width / 2;
             })
             .attr('y', function (d) {
-                return d.boundary.centerY - height / 2;
+                return d.feature.boundary.centerY - height / 2;
             });
         // // store all features that get drawn
         // this.visibleFeatures = {};
@@ -432,8 +497,8 @@ function MapCanvas() {
         // only redraw when needed (transformation changed, features toggled)
         if (self.needUpdate) {
             self.boundary = new Boundary(self.viewCenter.x, self.viewCenter.y,
-                                         self.canvas.attr('width') / self.scale,
-                                         self.canvas.attr('height') / self.scale,
+                                         self.svg.attr('width') / self.scale,
+                                         self.svg.attr('height') / self.scale,
                                          null);
             // self._clear();
             self._drawMaps();
@@ -473,8 +538,8 @@ function MapCanvas() {
         this.canvasContext.setTransform(this.scale, 0, 0, this.scale,
                                         newTranslation.x, newTranslation.y);
         this.viewCenter = {
-            x: (this.canvas.width() / 2 - newTranslation.x) / this.scale,
-            y: (this.canvas.height() / 2 - newTranslation.y) / this.scale
+            x: (this.svg.width() / 2 - newTranslation.x) / this.scale,
+            y: (this.svg.height() / 2 - newTranslation.y) / this.scale
         };
         this.needUpdate = true;
     };
@@ -496,8 +561,8 @@ function MapCanvas() {
                                         this.lastTranslation.x,
                                         this.lastTranslation.y);
         this.viewCenter = {
-            x: (this.canvas.width() / 2 - this.lastTranslation.x) / this.scale,
-            y: (this.canvas.height() / 2 - this.lastTranslation.y) / this.scale
+            x: (this.svg.width() / 2 - this.lastTranslation.x) / this.scale,
+            y: (this.svg.height() / 2 - this.lastTranslation.y) / this.scale
         };
         this.needUpdate = true;
     };
@@ -513,8 +578,8 @@ function MapCanvas() {
                                         this.lastTranslation.x,
                                         this.lastTranslation.y);
         this.viewCenter = {
-            x: (this.canvas.width() / 2 - this.lastTranslation.x) / this.scale,
-            y: (this.canvas.height() / 2 - this.lastTranslation.y) / this.scale
+            x: (this.svg.width() / 2 - this.lastTranslation.x) / this.scale,
+            y: (this.svg.height() / 2 - this.lastTranslation.y) / this.scale
         };
         this.needUpdate = true;
     };
@@ -554,7 +619,7 @@ function FeatureInfo() {
         if (formName === 'Map') {
             initialValue = 'Map_';
         } else if (formName === 'Feature_Category') {
-            extraInput = '<input type="hidden" value="Category" name="namespace" />'
+            extraInput = '<input type="hidden" value="Category" name="namespace" />';
         }
         // preliminary form to ask for the name of the data to create/edit
         form = ['<form action="http://dogtato.net/minecraft/index.php?title=Special:FormStart" method="get">',
@@ -679,7 +744,8 @@ function MainApp() {
         this.mapCanvas.loadMap();
         $(this.mapCanvas).on('canvasReady', function mapCanvasReady() {
             self.createCheckboxes();
-            setInterval(self.mapCanvas.draw, 100); // start drawing
+            self.mapCanvas.draw();
+            // setInterval(self.mapCanvas.draw, 100); // start drawing
         });
     };
     this._setMouseoverBox = function (featureName, x, y) {
