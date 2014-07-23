@@ -47,10 +47,10 @@ function MapImagery(centerX, centerY, zoomLevel, imageURL) {
     this.boundary = new Boundary(centerX, centerY, mapSize, mapSize);
     this.zoomLevel = zoomLevel;
     this.image = document.createElement('img');
-    this.image.onload = function () {
-        mainApp.mapCanvas.needUpdate = true;
-        self.ready = true;
-    };
+    // this.image.onload = function () {
+    //     mainApp.mapCanvas.needUpdate = true;
+    //     self.ready = true;
+    // };
     this.image.src = imageURL;
 }
 
@@ -61,8 +61,8 @@ function Feature(x, y, imageURL) {
     this.image = document.createElement('img');
     this.image.onload = function () {
         self.boundary = new Boundary(x, y, this.width, this.height);
-        mainApp.mapCanvas.needUpdate = true;
         self.ready = true;
+        mainApp.mapCanvas.needUpdate = true;
     };
     this.image.src = imageURL;
     this.distanceFrom = function (x1, y1) {
@@ -240,12 +240,17 @@ function MapCanvas() {
     this.y = null;
     this.mapData = null;
 
-    this.startTranslation = {x: 0, y: 0};
-    this.lastTranslation = {x: 0, y: 0};
-    this.viewCenter = {x: 0, y: 0};
+    this.viewBox = {left: 0,
+                    top: 0,
+                    width: 0,
+                    height: 0};
+
+    // this.startTranslation = {x: 0, y: 0};
+    // this.lastTranslation = {x: 0, y: 0};
+    // this.viewCenter = {x: 0, y: 0};
     this.scale = 1;
     this.boundary = null;
-    this.visibleFeatures = {};
+    // this.visibleFeatures = {};
     this.featureIconSize = 15;
     this.needUpdate = false;
     // http://stackoverflow.com/a/16265661/225730
@@ -257,35 +262,23 @@ function MapCanvas() {
             x = w.innerWidth || e.clientWidth || g.clientWidth,
             y = w.innerHeight|| e.clientHeight|| g.clientHeight;
 
-        x = w.innerWidth || e.clientWidth || g.clientWidth;
-        y = w.innerHeight|| e.clientHeight|| g.clientHeight;
-
         self.svg.attr("width", x)
                    .attr("height", y);
-        d3.select('#mapoverlay').attr("width", x)
-                                .attr("height", y);
         self.updateScale();
     };
     this.updateScale = function () {
-        var viewBoxStr = self.svg.attr('viewBox'),
-            viewBoxComponents,
-            viewBoxWidth,
-            viewBoxHeight,
-            svgWidth,
+        var svgWidth,
             svgHeight,
             featureSize,
             featureWidth,
             featureHeight;
-        if (viewBoxStr !== null) {
-            viewBoxComponents = viewBoxStr.split(' ');
-            viewBoxWidth = viewBoxComponents[2];
-            viewBoxHeight = viewBoxComponents[3];
+        if (this.viewBox.width !== 0) {
             svgWidth = self.svg.attr('width');
             svgHeight = self.svg.attr('height');
-            self.scale = Math.min(svgHeight / viewBoxHeight, svgWidth / viewBoxWidth);
-            featureSize = self.featureIconSize / self.scale,
+            self.scale = Math.min(svgHeight / this.viewBox.height, svgWidth / this.viewBox.width);
+            featureSize = self.featureIconSize / self.scale;
+            // resize feature icons so they stay the same size on the screen
             d3.selectAll('#featureGroup image')
-                // scale so the largest dimension is featureSize
                 .attr('width', function (d) {
                     if (d.feature.boundary.width > d.feature.boundary.height) {
                         featureWidth = featureSize;
@@ -314,10 +307,10 @@ function MapCanvas() {
     };
     this.init = function () {
         var canvasOffset;
-        this.svg = d3.select('#mapcanvas');
+        this.svg = d3.select('#mapCanvas');
         this.resizeSVG();
         window.onresize = this.resizeSVG;
-        canvasOffset = $('#mapcanvas').offset();
+        canvasOffset = $('#mapCanvas').offset();
         this.x = canvasOffset.left;
         this.y = canvasOffset.top;
         this.mapData = new MapData();
@@ -325,11 +318,15 @@ function MapCanvas() {
     this.loadMap = function () {
         this.mapData.load();
         $(this.mapData).on('dataLoaded', function mapDataLoaded() {
+            self.viewBox = {left: self.mapData.boundary.left,
+                            top: self.mapData.boundary.top,
+                            width: self.mapData.boundary.width,
+                            height: self.mapData.boundary.height};
             self.svg.attr('viewBox', function() {
-                return self.mapData.boundary.left + ' ' +
-                       self.mapData.boundary.top + ' ' +
-                       self.mapData.boundary.width + ' ' +
-                       self.mapData.boundary.height;
+                return self.viewBox.left + ' ' +
+                       self.viewBox.top + ' ' +
+                       self.viewBox.width + ' ' +
+                       self.viewBox.height;
             })
                 .attr('preserveAspectRatio', 'xMidYMid');
             self.updateScale();
@@ -352,16 +349,6 @@ function MapCanvas() {
             $(self).trigger('canvasReady');
         });
     };
-    // this._clear = function () {
-    //     // clear canvas with a white background
-    //     this.canvasContext.save();
-    //     this.canvasContext.setTransform(1, 0, 0, 1, 0, 0);
-    //     this.canvasContext.fillStyle = '#FFFFFF';
-    //     this.canvasContext.fillRect(0, 0,
-    //                                 this.svg.width(), this.svg.height());
-    //     // reapply scale and translation
-    //     this.canvasContext.restore();
-    // };
     this._drawMaps = function () {
         var mapImagery,
             i;
@@ -382,166 +369,120 @@ function MapCanvas() {
             })
             .attr('height', function (d) {
                 return d.boundary.height;
-            });
-        // for (i = 0; i < this.mapData.maps.length; i += 1) {
-        //     mapImagery = this.mapData.maps[i];
-        //     // check that map will be visible
-        //     if (mapImagery.ready &&
-        //         this.boundary.contains(mapImagery.boundary)) {
-        //         this.canvasContext.drawImage(mapImagery.image,
-        //                                      mapImagery.boundary.left,
-        //                                      mapImagery.boundary.top,
-        //                                      mapImagery.boundary.width,
-        //                                      mapImagery.boundary.height);
-        //     }
-        // }
+            })
+            .attr('draggable', 'false');
     };
     this._drawFeatures = function () {
-        var // divide by scale to keep the icon size constant
-            featureSize = this.featureIconSize / this.scale,
-            // scaleFactor,
-            // left,
-            // top,
-            width,
-            height,
-            categories = d3.select('#featureGroup').selectAll('g')
-                .data(function convertCategoriesToArray() {
-                    var categoryArray = [];
-                    $.each(self.mapData.categories, function (categoryName, category) {
-                        if (self.mapData.categories.hasOwnProperty(categoryName)) {
-                            categoryArray.push({'name': categoryName,
-                                                'features': category.features});
-                        }
-                    });
-                    return categoryArray;
-                })
-              .enter().append('g')
-                .attr('categoryId', function (d, i) {
-                    return 'featureCategory' + i;
+        var featureSize = this.featureIconSize / this.scale,
+            featureWidth,
+            featureHeight,
+            categories,
+            features;
+        categories = d3.select('#featureGroup').selectAll('g')
+            .data(function convertCategoriesToArray() {
+                var categoryArray = [];
+                $.each(self.mapData.categories, function (categoryName, category) {
+                    if (self.mapData.categories.hasOwnProperty(categoryName)) {
+                        categoryArray.push({'name': categoryName,
+                                            'features': category.features});
+                    }
                 });
-        categories.selectAll('image')
+                return categoryArray;
+            });
+        categories.enter().append('g')
+            .attr('categoryId', function (d, i) {
+                return 'featureCategory' + i;
+            });
+        features = categories.selectAll('image')
             .data(function (d) {
                 var featureArray = [];
                 $.each(d.features, function (featureName, feature) {
-                    if (d.features.hasOwnProperty(featureName)) {
+                    if (d.features.hasOwnProperty(featureName) &&
+                            feature.ready) {
                         featureArray.push({'name': featureName,
                                            'feature': feature});
                     }
                 });
                 return featureArray;
-            })
-          .enter().append('image')
+            });
+        features.enter().append('image')
             .attr('xlink:href', function (d) {
                 return d.feature.image.src;
             })
             // scale so the largest dimension is featureSize
             .attr('width', function (d) {
                 if (d.feature.boundary.width > d.feature.boundary.height) {
-                    width = featureSize;
+                    featureWidth = featureSize;
                 }
                 else {
-                    width = featureSize * d.feature.boundary.width / d.feature.boundary.height;
+                    featureWidth = featureSize * d.feature.boundary.width / d.feature.boundary.height;
                 }
-                return width;
+                return featureWidth;
             })
             .attr('height', function (d) {
                 if (d.feature.boundary.width > d.feature.boundary.height) {
-                    height = featureSize;
+                    featureHeight = featureSize;
                 }
                 else {
-                    height = featureSize * d.feature.boundary.height / d.feature.boundary.width;
+                    featureHeight = featureSize * d.feature.boundary.height / d.feature.boundary.width;
                 }
-                return height;
+                return featureHeight;
             })
             .attr('x', function (d) {
-                return d.feature.boundary.centerX - width / 2;
+                return d.feature.boundary.centerX - featureWidth / 2;
             })
             .attr('y', function (d) {
-                return d.feature.boundary.centerY - height / 2;
-            });
-        // // store all features that get drawn
-        // this.visibleFeatures = {};
-        // // go through each category that's turned on
-        // $.each(this.mapData.categories, function (categoryName, category) {
-        //     if (self.mapData.categories.hasOwnProperty(categoryName) &&
-        //             category.isVisible) {
+                return d.feature.boundary.centerY - featureHeight / 2;
+            })
+            .attr('draggable', 'false');
+        features.exit().remove();
+        // features.on('mouseover', function () {
 
-        //         $.each(category.features, function (featureName, feature) {
-        //             if (category.features.hasOwnProperty(featureName) &&
-        //                     feature.ready &&
-        //                     self.boundary.containsCenterOf(feature.boundary)) {
-        //                 // scale so the largest dimension is featureSize
-        //                 if (feature.boundary.width > feature.boundary.height){
-        //                     scaleFactor = featureSize / feature.boundary.width;
-        //                     width = featureSize;
-        //                     height = feature.boundary.height * scaleFactor;
-        //                 } else {
-        //                     scaleFactor = featureSize / feature.boundary.height;
-        //                     width = feature.boundary.width * scaleFactor;
-        //                     height = featureSize;
-        //                 }
-        //                 left = feature.boundary.centerX - width / 2;
-        //                 top = feature.boundary.centerY - height / 2;
-        //                 // draw the feature
-        //                 self.canvasContext.drawImage(feature.image, left, top,
-        //                                              width, height);
-        //                 // and store it for checking mouseover
-        //                 self.visibleFeatures[featureName] = feature;
-        //             }
-        //         });
-        //     }
         // });
     };
-    // this is executed by setInterval so need to use self within
     this.draw = function () {
-        // only redraw when needed (transformation changed, features toggled)
         if (self.needUpdate) {
-            self.boundary = new Boundary(self.viewCenter.x, self.viewCenter.y,
-                                         self.svg.attr('width') / self.scale,
-                                         self.svg.attr('height') / self.scale,
-                                         null);
-            // self._clear();
+            self.needUpdate = false;
             self._drawMaps();
             self._drawFeatures();
-            self.needUpdate = false;
-        }
-    };
-    this.getFeatureNear = function (x, y) {
-        var nearbyFeature = null,
-            // check for features within 20 pixels (squared for efficiency)
-            // divide by scale to get map distance
-            nearestDistance = 20 * 20 / this.scale,
-            featureDistance;
-        if (this.boundary !== null &&
-                this.boundary.containsPoint(x, y)) {
-            $.each(this.visibleFeatures, function (featureName, feature) {
-                if (self.visibleFeatures.hasOwnProperty(featureName)) {
-                    featureDistance = feature.distanceFrom(x, y);
-                    if (featureDistance < nearestDistance) {
-                        nearestDistance = featureDistance;
-                        nearbyFeature = featureName;
-                    }
-                }
+            d3.selectAll('image').on('dragstart', function () {
+                d3.event.preventDefault();
             });
         }
-        return nearbyFeature;
     };
     this.startPan = function (pageX, pageY) {
         this.startTranslation = {
-            x: pageX - this.x - this.lastTranslation.x,
-            y: pageY - this.y - this.lastTranslation.y
+            x: pageX,
+            y: pageY
+            // x: pageX - this.x - this.lastTranslation.x,
+            // y: pageY - this.y - this.lastTranslation.y
+        };
+        this.viewBoxStart = {
+            left: this.viewBox.left,
+            top: this.viewBox.top
         };
     };
     this.continuePan = function (pageX, pageY) {
-        var newTranslation = {x: pageX - this.x - this.startTranslation.x,
-                              y: pageY - this.y - this.startTranslation.y};
-        this.canvasContext.setTransform(this.scale, 0, 0, this.scale,
-                                        newTranslation.x, newTranslation.y);
-        this.viewCenter = {
-            x: (this.svg.width() / 2 - newTranslation.x) / this.scale,
-            y: (this.svg.height() / 2 - newTranslation.y) / this.scale
-        };
-        this.needUpdate = true;
+        var mouseDelta = {
+            x: pageX - this.startTranslation.x,
+            y: pageY - this.startTranslation.y};
+        this.viewBox.left = this.viewBoxStart.left - mouseDelta.x / this.scale;
+        this.viewBox.top = this.viewBoxStart.top - mouseDelta.y / this.scale;
+        self.svg.attr('viewBox', function() {
+            return self.viewBox.left + ' ' +
+                   self.viewBox.top + ' ' +
+                   self.viewBox.width + ' ' +
+                   self.viewBox.height;
+        });
+        // var newTranslation = {x: pageX - this.x - this.startTranslation.x,
+        //                       y: pageY - this.y - this.startTranslation.y};
+        // this.canvasContext.setTransform(this.scale, 0, 0, this.scale,
+        //                                 newTranslation.x, newTranslation.y);
+        // this.viewCenter = {
+        //     x: (this.svg.width() / 2 - newTranslation.x) / this.scale,
+        //     y: (this.svg.height() / 2 - newTranslation.y) / this.scale
+        // };
+        // this.needUpdate = true;
     };
     this.endPan = function (pageX, pageY) {
         this.lastTranslation = {
@@ -585,12 +526,14 @@ function MapCanvas() {
     };
     this.getMapPosition = function (pageX, pageY) {
         return {
-            x: Math.round(
-                (pageX - this.x - this.lastTranslation.x) / this.scale
-            ),
-            y: Math.round(
-                (pageY - this.y - this.lastTranslation.y) / this.scale
-            )
+            x: Math.round(this.viewBox.left + pageX / this.scale),
+            y: Math.round(this.viewBox.top + pageY / this.scale)
+            // x: Math.round(
+            //     (pageX - this.x - this.viewBox.left) / this.scale
+            // ),
+            // y: Math.round(
+            //     (pageY - this.y - this.viewBox.top) / this.scale
+            // )
         };
     };
 }
@@ -745,7 +688,7 @@ function MainApp() {
         $(this.mapCanvas).on('canvasReady', function mapCanvasReady() {
             self.createCheckboxes();
             self.mapCanvas.draw();
-            // setInterval(self.mapCanvas.draw, 100); // start drawing
+            setInterval(self.mapCanvas.draw, 100); // start drawing
         });
     };
     this._setMouseoverBox = function (featureName, x, y) {
@@ -771,9 +714,9 @@ function MainApp() {
         }
         this.mouseIsDown = true;
         this.mapCanvas.startPan(pageX, pageY);
-        mousePos = this.mapCanvas.getMapPosition(pageX, pageY);
-        this.clickedFeature = this.mapCanvas.getFeatureNear(mousePos.x,
-                                                            mousePos.y);
+        // mousePos = this.mapCanvas.getMapPosition(pageX, pageY);
+        // this.clickedFeature = this.mapCanvas.getFeatureNear(mousePos.x,
+        //                                                     mousePos.y);
     };
     this.moveMouse = function (pageX, pageY) {
         var mousePos = {x: 0, y: 0},
@@ -814,7 +757,10 @@ $(document).ready(function initialSetup() {
     mainApp = new MainApp();
     mainApp.init();
 
-    $('#mapoverlay').on({
+    $('#mapCanvas').on({
+        // 'dragstart': 'image', function (event) {
+        //     event.preventDefault();
+        // },
         'mousedown': function canvasMouseButtonPressed(event) {
             mainApp.startMouse(event.pageX, event.pageY);
         },
