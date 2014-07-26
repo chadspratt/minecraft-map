@@ -247,12 +247,8 @@ function MapCanvas() {
                     width: 0,
                     height: 0};
 
-    // this.startTranslation = {x: 0, y: 0};
-    // this.lastTranslation = {x: 0, y: 0};
-    // this.viewCenter = {x: 0, y: 0};
     this.scale = 0;
     this.boundary = null;
-    // this.visibleFeatures = {};
     this.featureIconSize = 15;
     this.needUpdate = false;
     // http://stackoverflow.com/a/16265661/225730
@@ -264,10 +260,10 @@ function MapCanvas() {
 
         self.svgWidth = (w.innerWidth || e.clientWidth || g.clientWidth) - 2;
         self.svgHeight = (w.innerHeight|| e.clientHeight|| g.clientHeight) - 2;
+
         self.svg.attr("width", self.svgWidth)
                    .attr("height", self.svgHeight);
         if (self.scale !== 0) {
-            self.updateScale();
             self.viewBox.left -= (self.svgWidth / self.scale - self.viewBox.width) / 2;
             self.viewBox.top -= (self.svgHeight / self.scale - self.viewBox.height) / 2;
             self.viewBox.width = self.svgWidth / self.scale;
@@ -280,15 +276,13 @@ function MapCanvas() {
             });
         }
     };
-    this.updateScale = function () {
+    // resize feature icons so they stay the same size on the screen
+    this.scaleFeatures = function () {
         var featureSize,
             featureWidth,
             featureHeight;
-        if (self.viewBox.width !== 0) {
-            // self.scale = Math.min(self.svgHeight / self.viewBox.height,
-            //                       self.svgWidth / self.viewBox.width);
+        if (self.scale !== 0) {
             featureSize = self.featureIconSize / self.scale;
-            // resize feature icons so they stay the same size on the screen
             d3.selectAll('#featureGroup image')
                 .attr('width', function (d) {
                     if (d.feature.boundary.width > d.feature.boundary.height) {
@@ -489,7 +483,7 @@ function MapCanvas() {
                    self.viewBox.width + ' ' +
                    self.viewBox.height;
         });
-        this.resizeSVG();
+        self.scaleFeatures();
     };
     this.zoomOut = function (pageX, pageY) {
         var zoomFactor = 1 / 1.1;
@@ -504,7 +498,7 @@ function MapCanvas() {
                    self.viewBox.width + ' ' +
                    self.viewBox.height;
         });
-        this.resizeSVG();
+        self.scaleFeatures();
     };
     this.getMapPosition = function (pageX, pageY) {
         return {
