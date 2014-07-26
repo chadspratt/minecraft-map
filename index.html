@@ -14,45 +14,42 @@
   <script src="./js/drawMap.js"></script>
 </head>
 <body>
-<svg id="mapCanvas">
+<svg id="mapSVG">
     <g id="mapImageGroup"></g>
     <g id="featureGroup"></g>
 </svg>
-<!-- <canvas id="mapCanvas" width="800" height="600"> -->
-<!-- <canvas id="mapCanvas" width="100%" height="100%"> -->
-<!-- Your browser does not support the HTML5 canvas tag.</canvas> -->
-<!-- <div id="mapoverlay"> -->
-  <div id="mapcontrols" class="overlayitem">
-    <!-- <div id="reloaddata" class="links">reload map</div>
-    Zoom: -->
-    <div id="updatedata" class="links">refresh</div>
-    <button id="zoomout">
-      -
-    </button>
-    <button id="zoomin">
-      +
-    </button>
+
+<div id="mapcontrols" class="overlayitem">
+<!-- <div id="reloaddata" class="links">reload map</div>
+Zoom: -->
+<div id="updatedata" class="links">refresh</div>
+<button id="zoomout">
+  -
+</button>
+<button id="zoomin">
+  +
+</button>
+</div>
+<div id="coorddisplay" class="overlayitem">x: z:</div>
+<div id="upperrightcontrols">
+<div id="layerbox" class="overlayitem">
+  <div id="layerheader" class="links"><right>Map Layers</right></div>
+  <div id="layerlist"></div>
+</div>
+<div id="editbox" class="overlayitem">
+  <div id="editheader" class="links"><right>Add/Edit Data</right></div>
+  <div id="editlist">
+    <span id="addfeature" class="links">Feature</span>,
+    <span id="addcategory" class="links">Category</span>,
+    <span id="addmap" class="links">Map</span>
   </div>
-  <div id="coorddisplay" class="overlayitem">x: z:</div>
-  <div id="upperrightcontrols">
-    <div id="layerbox" class="overlayitem">
-      <div id="layerheader" class="links"><right>Map Layers</right></div>
-      <div id="layerlist"></div>
-    </div>
-    <div id="editbox" class="overlayitem">
-      <div id="editheader" class="links"><right>Add/Edit Data</right></div>
-      <div id="editlist">
-        <span id="addfeature" class="links">Feature</span>,
-        <span id="addcategory" class="links">Category</span>,
-        <span id="addmap" class="links">Map</span>
-      </div>
-      <div id="editprompt"></div>
-    </div>
-  </div>
-<!-- </div> -->
-<div id="featureinfo"></div>
+  <div id="editprompt"></div>
+</div>
+</div>
+
 <div id="debugarea"></div>
 <div id="mouseoverbox" class="overlayitem"></div>
+<div id="boundFeatureInfo" class="overlayitem"></div>
 
 </body>
 </html>

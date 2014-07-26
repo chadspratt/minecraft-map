@@ -24,7 +24,7 @@ function MapImagery(centerX, centerY, zoomLevel, imageURL) {
     this.zoomLevel = zoomLevel;
     this.image = document.createElement('img');
     // this.image.onload = function () {
-    //     mainApp.mapCanvas.needUpdate = true;
+    //     mainApp.mapSVG.needUpdate = true;
     //     self.ready = true;
     // };
     this.image.src = imageURL;
@@ -38,7 +38,7 @@ function Feature(x, y, imageURL) {
     this.image.onload = function () {
         self.boundary = new Boundary(x, y, this.width, this.height);
         self.ready = true;
-        mainApp.mapCanvas.needUpdate = true;
+        mainApp.mapSVG.needUpdate = true;
     };
     this.image.src = imageURL;
 }
@@ -56,6 +56,95 @@ function HierarchyMember() {
     'use strict';
     this.parentCat = null;
     this.children = [];
+}
+function FeatureInfo(selector) {
+    'use strict';
+    var self = this;
+    this.infoArea = $(selector);
+    // set any links in the feature info to call this.load(link.title)
+    this.redirectLinks = function () {
+        this.infoArea.find('a').click(function followLink(clickEvent) {
+            // don't follow the link
+            clickEvent.preventDefault();
+            // load the info in #featureinfo
+            self.load(this.title);
+        });
+    };
+    this.loadForm = function (formName) {
+        var instructions,
+            initialValue = '',
+            extraInput = '',
+            form,
+            formArea = $('#editprompt');
+        if (formName === 'Map') {
+            initialValue = 'Map_';
+        } else if (formName === 'Feature_Category') {
+            extraInput = '<input type="hidden" value="Category" name="namespace" />';
+        }
+        // preliminary form to ask for the name of the data to create/edit
+        form = ['<form action="http://dogtato.net/minecraft/index.php?title=Special:FormStart" method="get">',
+                    '<input size="25" value="' + initialValue + '" class="formInput" name="page_name" />',
+                    '<input type="hidden" value="Special:FormStart" name="title" />',
+                    '<input type="hidden" value="' + formName + '" name="form" />',
+                    extraInput,
+                    '<input type="submit" value="Create or edit" />',
+                '</form>'].join(' ');
+        if (formName === 'Map') {
+            instructions = 'Map number:';
+        } else if (formName === 'Feature') {
+            instructions = 'Feature name:';
+        } else if (formName === 'Feature_Category') {
+            instructions = 'Category name:';
+        }
+        formArea.html(instructions + form);
+        formArea.slideDown(100);
+        formArea.find('form').ajaxForm(function formResponse (data) {
+            var url = 'http://dogtato.net/minecraft/index.php',
+                pageName = data.match(/index\.php\?title\=([^"]+)/)[1],
+                fullurl = url + '?title=' + pageName;
+            // global editWindow
+            if (editWindow === null || editWindow.closed) {
+                editWindow = window.open(fullurl,
+                                         'editWindow',"width=800,height=700");
+            } else {
+                editWindow.location.href = fullurl;
+                editWindow.focus();
+            }
+            // could use this on the form that's loaded to show the update
+            // on the map immediately
+            // this.infoArea.find('form').ajaxForm(function formResponse (data) {
+        });
+    };
+    this.load = function (featureName) {
+        // standardize the case for caching
+        var lowercaseName = featureName.toLowerCase();
+        if (mainApp.infoCache.hasOwnProperty(lowercaseName)) {
+            this.infoArea.html(mainApp.infoCache[lowercaseName]);
+            this.redirectLinks();
+        } else {
+            $.post('http://dogtato.net/minecraft/index.php',
+                   {title: featureName, action: 'render'})
+                   // {title: featureName, printable: 'yes'})
+                .done(function featureInfoLoaded(data) {
+                    var header = '<h2>' + featureName + '</h2>';
+                    self.infoArea.html(header + data);
+                    // remove any edit links
+                    self.infoArea.find('span.editsection').remove();
+                    self.redirectLinks();
+                    mainApp.infoCache[lowercaseName] = self.infoArea.html();
+                })
+                // if page doesn't exist, load a form to create it
+                .fail(function featureInfoNotLoaded(e) {
+                    var nameEnd,
+                        trimmedName;
+                    if (e.status === 404) {
+                        nameEnd = featureName.indexOf(' (page does not exist)');
+                        trimmedName = featureName.slice(0, nameEnd);
+                        self.loadFeatureForm(trimmedName);
+                    }
+                });
+        }
+    };
 }
 
 function MapData() {
@@ -203,7 +292,7 @@ function MapData() {
     };
 }
 
-function MapCanvas() {
+function MapSVG() {
     'use strict';
     var self = this;
     // set in init()
@@ -285,10 +374,10 @@ function MapCanvas() {
     };
     this.init = function () {
         var canvasOffset;
-        this.svg = d3.select('#mapCanvas');
+        this.svg = d3.select('#mapSVG');
         this.resizeSVG();
         window.onresize = this.resizeSVG;
-        canvasOffset = $('#mapCanvas').offset();
+        canvasOffset = $('#mapSVG').offset();
         this.x = canvasOffset.left;
         this.y = canvasOffset.top;
         this.mapData = new MapData();
@@ -398,7 +487,6 @@ function MapCanvas() {
             .attr('y', function (d) {
                 return d.feature.boundary.centerY - featureHeight / 2;
             });
-        // need update too
         features.exit().remove();
         features.on('mouseenter', function (d) {
             mouseoverBox
@@ -413,6 +501,12 @@ function MapCanvas() {
             mouseoverBox
                 .style('left', '-1000px')
                 .style('top', '-1000px');
+        });
+        features.on('click', function (d) {
+            d3.select('#boundFeatureInfo')
+                .style('left', (d3.event.pageX + 10) + 'px')
+                .style('top', (d3.event.pageY - 5) + 'px');
+            mainApp.boundFeatureInfo.load(d.name);
         });
     };
     this.draw = function () {
@@ -492,111 +586,22 @@ function MapCanvas() {
     };
 }
 
-function FeatureInfo() {
-    'use strict';
-    var self = this;
-    this.infoArea = $('#featureinfo');
-    // cache data when feature is clicked
-    this.infoCache = {};
-    // set any links in the feature info to call this.load(link.title)
-    this.redirectLinks = function () {
-        this.infoArea.find('a').click(function followLink(clickEvent) {
-            // don't follow the link
-            clickEvent.preventDefault();
-            // load the info in #featureinfo
-            self.load(this.title);
-        });
-    };
-    this.loadForm = function (formName) {
-        var instructions,
-            initialValue = '',
-            extraInput = '',
-            form,
-            formArea = $('#editprompt');
-        if (formName === 'Map') {
-            initialValue = 'Map_';
-        } else if (formName === 'Feature_Category') {
-            extraInput = '<input type="hidden" value="Category" name="namespace" />';
-        }
-        // preliminary form to ask for the name of the data to create/edit
-        form = ['<form action="http://dogtato.net/minecraft/index.php?title=Special:FormStart" method="get">',
-                    '<input size="25" value="' + initialValue + '" class="formInput" name="page_name" />',
-                    '<input type="hidden" value="Special:FormStart" name="title" />',
-                    '<input type="hidden" value="' + formName + '" name="form" />',
-                    extraInput,
-                    '<input type="submit" value="Create or edit" />',
-                '</form>'].join(' ');
-        if (formName === 'Map') {
-            instructions = 'Map number:';
-        } else if (formName === 'Feature') {
-            instructions = 'Feature name:';
-        } else if (formName === 'Feature_Category') {
-            instructions = 'Category name:';
-        }
-        formArea.html(instructions + form);
-        formArea.slideDown(100);
-        formArea.find('form').ajaxForm(function formResponse (data) {
-            var url = 'http://dogtato.net/minecraft/index.php',
-                pageName = data.match(/index\.php\?title\=([^"]+)/)[1],
-                fullurl = url + '?title=' + pageName;
-            // global editWindow
-            if (editWindow === null || editWindow.closed) {
-                editWindow = window.open(fullurl,
-                                         'editWindow',"width=800,height=700");
-            } else {
-                editWindow.location.href = fullurl;
-                editWindow.focus();
-            }
-            // could use this on the form that's loaded to show the update
-            // on the map immediately
-            // this.infoArea.find('form').ajaxForm(function formResponse (data) {
-        });
-    };
-    this.load = function (featureName) {
-        // standardize the case for caching
-        var lowercaseName = featureName.toLowerCase();
-        if (this.infoCache.hasOwnProperty(lowercaseName)) {
-            this.infoArea.html(this.infoCache[lowercaseName]);
-            this.redirectLinks();
-        } else {
-            $.post('http://dogtato.net/minecraft/index.php',
-                   {title: featureName, action: 'render'})
-                   // {title: featureName, printable: 'yes'})
-                .done(function featureInfoLoaded(data) {
-                    var header = '<h2>' + featureName + '</h2>';
-                    self.infoArea.html(header + data);
-                    // remove any edit links
-                    self.infoArea.find('span.editsection').remove();
-                    self.redirectLinks();
-                    self.infoCache[lowercaseName] = self.infoArea.html();
-                })
-                // if page doesn't exist, load a form to create it
-                .fail(function featureInfoNotLoaded(e) {
-                    var nameEnd,
-                        trimmedName;
-                    if (e.status === 404) {
-                        nameEnd = featureName.indexOf(' (page does not exist)');
-                        trimmedName = featureName.slice(0, nameEnd);
-                        self.loadFeatureForm(trimmedName);
-                    }
-                });
-        }
-    };
-}
-
 function MainApp() {
     'use strict';
     var self = this;
-    this.mapCanvas = null;
-    this.featureInfo = null;
+    this.mapSVG = null;
     this.coordDisplay = null;
-    this.mouseIsDown = false;
-    this.clickedFeature = null;
+    this.boundFeatureInfo = null;
+    // this.mouseIsDown = false;
+    // this.clickedFeature = null;
+
+    // cache data when feature is clicked
+    this.infoCache = {};
     // set the handlers for when a category is toggled
     this.setCheckboxHandlers = function () {
         $('.categoryToggle').on('click', function updateCategories() {
-            self.mapCanvas.mapData.categories[this.id].isVisible = this.checked;
-            // self.mapCanvas.needUpdate = true;
+            self.mapSVG.mapData.categories[this.id].isVisible = this.checked;
+            // self.mapSVG.needUpdate = true;
         });
     };
     this.createCheckBox = function (category) {
@@ -619,7 +624,7 @@ function MainApp() {
             subcategory,
             checkBoxHtml = '<ul>\n',
             i;
-        category = this.mapCanvas.mapData.categories[categoryName];
+        category = this.mapSVG.mapData.categories[categoryName];
         checkBoxHtml += this.createCheckBox(category);
         for (i = 0; i < category.children.length; i += 1) {
             subcategory = category.children[i];
@@ -634,15 +639,15 @@ function MainApp() {
         this.setCheckboxHandlers();
     };
     this.init = function () {
-        this.mapCanvas = new MapCanvas();
-        this.mapCanvas.init();
-        this.featureInfo = new FeatureInfo();
+        this.mapSVG = new MapSVG();
+        this.mapSVG.init();
+        this.boundFeatureInfo = new FeatureInfo('#boundFeatureInfo');
         this.coordDisplay = $('#coorddisplay');
-        this.mapCanvas.loadMap();
-        $(this.mapCanvas).on('canvasReady', function mapCanvasReady() {
+        this.mapSVG.loadMap();
+        $(this.mapSVG).on('canvasReady', function mapSVGReady() {
             self.createCheckboxes();
-            self.mapCanvas.draw();
-            setInterval(self.mapCanvas.draw, 100); // start drawing
+            self.mapSVG.draw();
+            setInterval(self.mapSVG.draw, 100); // start drawing
         });
     };
     this.setCoordDisplay = function (x, z) {
@@ -653,12 +658,12 @@ function MainApp() {
         // check this in case the cursor was released outside the document
         // in which case the event would have been missed
         if (this.mouseIsDown) {
-            this.mapCanvas.endPan(pageX, pageY);
+            this.mapSVG.endPan(pageX, pageY);
         }
         this.mouseIsDown = true;
-        this.mapCanvas.startPan(pageX, pageY);
-        // mousePos = this.mapCanvas.getMapPosition(pageX, pageY);
-        // this.clickedFeature = this.mapCanvas.getFeatureNear(mousePos.x,
+        this.mapSVG.startPan(pageX, pageY);
+        // mousePos = this.mapSVG.getMapPosition(pageX, pageY);
+        // this.clickedFeature = this.mapSVG.getFeatureNear(mousePos.x,
         //                                                     mousePos.y);
     };
     this.moveMouse = function (pageX, pageY) {
@@ -666,13 +671,13 @@ function MainApp() {
             nearbyFeature = null;
         // pan the map
         if (this.mouseIsDown) {
-            this.mapCanvas.continuePan(pageX, pageY);
+            this.mapSVG.continuePan(pageX, pageY);
         // update cursor coordinates and check against features
         } else {
-            mousePos = this.mapCanvas.getMapPosition(pageX,
+            mousePos = this.mapSVG.getMapPosition(pageX,
                                                      pageY);
             this.setCoordDisplay(mousePos.x, mousePos.y);
-            nearbyFeature = this.mapCanvas.getFeatureNear(mousePos.x,
+            nearbyFeature = this.mapSVG.getFeatureNear(mousePos.x,
                                                           mousePos.y);
         }
         // show feature name in mouse tooltip, or remove tooltip if
@@ -685,11 +690,11 @@ function MainApp() {
         // check that the click started on the canvas
         if (this.mouseIsDown) {
             this.mouseIsDown = false;
-            this.mapCanvas.endPan(pageX, pageY);
-            // this.mapCanvas.needUpdate = true;
-            if (this.clickedFeature !== null) {
-                this.featureInfo.load(this.clickedFeature);
-            }
+            this.mapSVG.endPan(pageX, pageY);
+            // this.mapSVG.needUpdate = true;
+            // if (this.clickedFeature !== null) {
+            //     this.boundFeatureInfo.load(this.clickedFeature);
+            // }
         }
     };
 }
@@ -700,7 +705,7 @@ $(document).ready(function initialSetup() {
     mainApp = new MainApp();
     mainApp.init();
 
-    $('#mapCanvas').on({
+    $('#mapSVG').on({
         // 'dragstart': 'image', function (event) {
         //     event.preventDefault();
         // },
@@ -710,10 +715,10 @@ $(document).ready(function initialSetup() {
         // provided by jquery.mousewheel.js
         'mousewheel': function canvasMouseScrolled(event) {
             if (event.deltaY > 0) {
-                mainApp.mapCanvas.zoomIn(event.pageX,
+                mainApp.mapSVG.zoomIn(event.pageX,
                                          event.pageY);
             } else {
-                mainApp.mapCanvas.zoomOut(event.pageX,
+                mainApp.mapSVG.zoomOut(event.pageX,
                                           event.pageY);
             }
         }
@@ -732,15 +737,15 @@ $(document).ready(function initialSetup() {
     // $('#getmapdata').on('click', function reloadMap() {
     //     mainApp.init();
     // });
-    $('#reloaddata').on('click', mainApp.mapCanvas.mapData.load);
-    $('#updatedata').on('click', mainApp.mapCanvas.mapData.update);
+    $('#reloaddata').on('click', mainApp.mapSVG.mapData.load);
+    $('#updatedata').on('click', mainApp.mapSVG.mapData.update);
     $('#zoomout').on('click', function zoomOut() {
-        mainApp.mapCanvas.zoomOut(mainApp.mapCanvas.svgWidth / 2,
-                                  mainApp.mapCanvas.svgHeight / 2);
+        mainApp.mapSVG.zoomOut(mainApp.mapSVG.svgWidth / 2,
+                                  mainApp.mapSVG.svgHeight / 2);
     });
     $('#zoomin').on('click', function zoomIn() {
-        mainApp.mapCanvas.zoomIn(mainApp.mapCanvas.svgWidth / 2,
-                                  mainApp.mapCanvas.svgHeight / 2);
+        mainApp.mapSVG.zoomIn(mainApp.mapSVG.svgWidth / 2,
+                                  mainApp.mapSVG.svgHeight / 2);
     });
     $('#layerlist').hide();
     $('#layerheader').on('click', function showMapLayers() {
@@ -759,12 +764,12 @@ $(document).ready(function initialSetup() {
     //     });
     // });
     $('#addfeature').on('click', function loadAddFeatureForm() {
-        mainApp.featureInfo.loadForm('Feature');
+        mainApp.boundFeatureInfo.loadForm('Feature');
     });
     $('#addcategory').on('click', function loadAddCategoryForm() {
-        mainApp.featureInfo.loadForm('Feature_Category');
+        mainApp.boundFeatureInfo.loadForm('Feature_Category');
     });
     $('#addmap').on('click', function loadAddMapForm() {
-        mainApp.featureInfo.loadForm('Map');
+        mainApp.boundFeatureInfo.loadForm('Map');
     });
 });

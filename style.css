@@ -1,4 +1,4 @@
-#mapCanvas {
+#mapSVG {
     position: absolute;
     top: 0px;
     left: 0px;
@@ -49,11 +49,12 @@
     top: 10px;
     left: 810px;
 }*/
-#featureinfo {
+#boundFeatureInfo {
     position: absolute;
     max-width: 600px;
     top: 30px;
     left: 810px;
+    z-index: 2;
 }
 #mouseoverbox {
     position: absolute;
@@ -63,7 +64,7 @@
 /*    width: 200px;
     height: 20px;*/
     /*on top of everything else*/
-    z-index: 2;
+    z-index: 3;
 }
 .links {
     cursor: pointer;
