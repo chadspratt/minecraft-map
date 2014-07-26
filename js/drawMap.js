@@ -13,30 +13,6 @@ function Boundary(centerX, centerY, width, height) {
     this.right = this.left + width;
     this.top = centerY - height / 2;
     this.bottom = this.top + height;
-    this.contains = function (boundary) {
-        return (boundary.left < this.right &&
-                boundary.right > this.left &&
-                boundary.top < this.bottom &&
-                boundary.bottom > this.top);
-    };
-    this.containsCenterOf = function (boundary) {
-        return (boundary.centerX < this.right &&
-                boundary.centerX > this.left &&
-                boundary.centerY < this.bottom &&
-                boundary.centerY > this.top);
-    };
-    // for checking mouseover
-    this.containsPoint = function (x, y) {
-        return (x < this.right &&
-                x > this.left &&
-                y < this.bottom &&
-                y > this.top);
-    };
-    this.squareDistanceFromCenter = function (x, y) {
-        var dx = this.centerX - x,
-            dy = this.centerY - y;
-        return dx * dx + dy * dy;
-    };
 }
 
 function MapImagery(centerX, centerY, zoomLevel, imageURL) {
@@ -65,9 +41,6 @@ function Feature(x, y, imageURL) {
         mainApp.mapCanvas.needUpdate = true;
     };
     this.image.src = imageURL;
-    this.distanceFrom = function (x1, y1) {
-        return this.boundary.squareDistanceFromCenter(x1, y1);
-    };
 }
 
 function Category(categoryName) {
@@ -92,14 +65,13 @@ function MapData() {
     this.categories = {};
     this.boundary = null;
 
-    // orders maps from SE to NW, so that NW will be drawn on top of SE
-    // this is to cover "map_x" text in the top left corner of each map
     this.sortMaps = function (a, b) {
         var comparator = 0;
         // draw low zoom[out] maps above high
         if (a.zoomLevel !== b.zoomLevel) {
             comparator = b.zoomLevel - a.zoomLevel;
-        // for legacy maps that have text in upper left corner
+        // orders maps from SE to NW, so that NW will be drawn on top of SE
+        // for legacy maps that have text in the upper left corner
         } else {
             // compare based on the coordinates with a bigger difference
             if (Math.abs(a.boundary.left - b.boundary.left) >
@@ -251,15 +223,16 @@ function MapCanvas() {
     this.boundary = null;
     this.featureIconSize = 15;
     this.needUpdate = false;
-    // http://stackoverflow.com/a/16265661/225730
+
     this.resizeSVG = function () {
+        // http://stackoverflow.com/a/16265661/225730
         var w = window,
             d = document,
             e = d.documentElement,
             g = d.getElementsByTagName('body')[0];
 
         self.svgWidth = (w.innerWidth || e.clientWidth || g.clientWidth) - 2;
-        self.svgHeight = (w.innerHeight|| e.clientHeight|| g.clientHeight) - 2;
+        self.svgHeight = (w.innerHeight || e.clientHeight || g.clientHeight) - 2;
 
         self.svg.attr("width", self.svgWidth)
                    .attr("height", self.svgHeight);
@@ -360,15 +333,15 @@ function MapCanvas() {
             })
             .attr('height', function (d) {
                 return d.boundary.height;
-            })
-            .attr('draggable', 'false');
+            });
     };
     this._drawFeatures = function () {
         var featureSize = this.featureIconSize / this.scale,
             featureWidth,
             featureHeight,
             categories,
-            features;
+            features,
+            mouseoverBox = d3.select("#mouseoverbox");
         categories = d3.select('#featureGroup').selectAll('g')
             .data(function convertCategoriesToArray() {
                 var categoryArray = [];
@@ -424,12 +397,23 @@ function MapCanvas() {
             })
             .attr('y', function (d) {
                 return d.feature.boundary.centerY - featureHeight / 2;
-            })
-            .attr('draggable', 'false');
+            });
+        // need update too
         features.exit().remove();
-        // features.on('mouseover', function () {
-
-        // });
+        features.on('mouseenter', function (d) {
+            mouseoverBox
+                .text(d.name);
+        });
+        features.on('mousemove', function (d) {
+            mouseoverBox
+                .style('left', d3.event.pageX + 'px')
+                .style('top', (d3.event.pageY - 30) + 'px');
+        });
+        features.on('mouseleave', function (d) {
+            mouseoverBox
+                .style('left', '-1000px')
+                .style('top', '-1000px');
+        });
     };
     this.draw = function () {
         if (self.needUpdate) {
@@ -661,17 +645,6 @@ function MainApp() {
             setInterval(self.mapCanvas.draw, 100); // start drawing
         });
     };
-    this._setMouseoverBox = function (featureName, x, y) {
-        var $mouseoverBox = $('#mouseoverbox');
-        if (featureName === null) {
-            $mouseoverBox.css('left', -1000);
-            $mouseoverBox.css('top', -1000);
-        } else {
-            $mouseoverBox.html(featureName);
-            $mouseoverBox.css('left', x);
-            $mouseoverBox.css('top', y - 30);
-        }
-    };
     this.setCoordDisplay = function (x, z) {
         this.coordDisplay.html('x: ' + x + ' z: ' + z);
     };
@@ -753,6 +726,7 @@ $(document).ready(function initialSetup() {
             mainApp.endMouse(event.pageX, event.pageY);
         }
     });
+
     // reload map data from the database
     // for debugging
     // $('#getmapdata').on('click', function reloadMap() {
