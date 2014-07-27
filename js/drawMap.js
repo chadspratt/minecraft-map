@@ -160,7 +160,7 @@ function FeatureInfo(selector) {
                 });
         }
     };
-    this.adjustPosition = function (delta) {
+    this.pan = function (delta) {
         if (this.initialPosition !== null) {
             this.lastPosition = {
                 x: this.initialPosition.x + delta.x,
@@ -170,6 +170,16 @@ function FeatureInfo(selector) {
                 .style('left', this.lastPosition.x + 'px')
                 .style('top', this.lastPosition.y + 'px');
         }
+    };
+    this.zoom = function (pageX, pageY, zoomFactor) {
+        if (this.lastPosition !== null) {
+            this.lastPosition.x += (this.lastPosition.x - pageX) * zoomFactor - (this.lastPosition.x - pageX);
+            this.lastPosition.y += (this.lastPosition.y - pageY) * zoomFactor - (this.lastPosition.y - pageY);
+            this.infoWindow
+                .style('left', this.lastPosition.x + 'px')
+                .style('top', this.lastPosition.y + 'px');
+        }
+        this.savePosition();
     };
     this.savePosition = function () {
         if (this.lastPosition !== null) {
@@ -581,7 +591,7 @@ function MapSVG() {
                    self.viewBox.width + ' ' +
                    self.viewBox.height;
         });
-        mainApp.boundFeatureInfo.adjustPosition(mouseDelta);
+        mainApp.boundFeatureInfo.pan(mouseDelta);
         // distinguish pans from clicks
             self.featureClicked = false;
     };
@@ -606,6 +616,7 @@ function MapSVG() {
                    self.viewBox.height;
         });
         self.scaleFeatures();
+        mainApp.boundFeatureInfo.zoom(pageX, pageY, zoomFactor);
     };
     this.zoomOut = function (pageX, pageY) {
         var zoomFactor = 1 / 1.1;
@@ -621,6 +632,7 @@ function MapSVG() {
                    self.viewBox.height;
         });
         self.scaleFeatures();
+        mainApp.boundFeatureInfo.zoom(pageX, pageY, zoomFactor);
     };
     this.getMapPosition = function (pageX, pageY) {
         return {
