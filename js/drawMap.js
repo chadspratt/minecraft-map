@@ -60,6 +60,9 @@ function HierarchyMember() {
 function FeatureInfo(selector) {
     'use strict';
     var self = this;
+    this.infoWindow = d3.select(selector);
+    this.initialPosition = null;
+    this.lastPosition = null;
     this.infoArea = $(selector);
     // set any links in the feature info to call this.load(link.title)
     this.redirectLinks = function () {
@@ -115,7 +118,19 @@ function FeatureInfo(selector) {
             // this.infoArea.find('form').ajaxForm(function formResponse (data) {
         });
     };
-    this.load = function (featureName) {
+    this.load = function (featureName, pageX, pageY) {
+        // save position so it can be adjusted during panning
+        this.initialPosition = {
+            x: pageX,
+            y: pageY
+        };
+        this.lastPosition = {
+            x: pageX,
+            y: pageY
+        };
+        this.infoWindow
+            .style('left', pageX + 'px')
+            .style('top', pageY + 'px');
         // standardize the case for caching
         var lowercaseName = featureName.toLowerCase();
         if (mainApp.infoCache.hasOwnProperty(lowercaseName)) {
@@ -143,6 +158,25 @@ function FeatureInfo(selector) {
                         self.loadFeatureForm(trimmedName);
                     }
                 });
+        }
+    };
+    this.adjustPosition = function (delta) {
+        if (this.initialPosition !== null) {
+            this.lastPosition = {
+                x: this.initialPosition.x + delta.x,
+                y: this.initialPosition.y + delta.y
+            };
+            this.infoWindow
+                .style('left', this.lastPosition.x + 'px')
+                .style('top', this.lastPosition.y + 'px');
+        }
+    };
+    this.savePosition = function () {
+        if (this.lastPosition !== null) {
+            this.initialPosition = {
+                x: this.lastPosition.x,
+                y: this.lastPosition.y
+            };
         }
     };
 }
@@ -312,6 +346,7 @@ function MapSVG() {
     this.boundary = null;
     this.featureIconSize = 15;
     this.needUpdate = false;
+    this.featureClicked = false;
 
     this.resizeSVG = function () {
         // http://stackoverflow.com/a/16265661/225730
@@ -492,21 +527,26 @@ function MapSVG() {
             mouseoverBox
                 .text(d.name);
         });
-        features.on('mousemove', function (d) {
+        features.on('mousemove', function () {
             mouseoverBox
                 .style('left', d3.event.pageX + 'px')
                 .style('top', (d3.event.pageY - 30) + 'px');
         });
-        features.on('mouseleave', function (d) {
+        features.on('mouseleave', function () {
             mouseoverBox
                 .style('left', '-1000px')
                 .style('top', '-1000px');
         });
-        features.on('click', function (d) {
-            d3.select('#boundFeatureInfo')
-                .style('left', (d3.event.pageX + 10) + 'px')
-                .style('top', (d3.event.pageY - 5) + 'px');
-            mainApp.boundFeatureInfo.load(d.name);
+        features.on('mousedown', function () {
+            self.featureClicked = true;
+        });
+        features.on('mouseup', function (d) {
+            if (self.featureClicked) {
+                self.featureClicked = false;
+                mainApp.boundFeatureInfo.load(d.name,
+                                              d3.event.pageX + 10,
+                                              d3.event.pageY - 5);
+            }
         });
     };
     this.draw = function () {
@@ -541,12 +581,16 @@ function MapSVG() {
                    self.viewBox.width + ' ' +
                    self.viewBox.height;
         });
+        mainApp.boundFeatureInfo.adjustPosition(mouseDelta);
+        // distinguish pans from clicks
+            self.featureClicked = false;
     };
     this.endPan = function (pageX, pageY) {
         this.lastTranslation = {
             x: pageX - this.x - this.startTranslation.x,
             y: pageY - this.y - this.startTranslation.y
         };
+        mainApp.boundFeatureInfo.savePosition();
     };
     this.zoomIn = function (pageX, pageY) {
         var zoomFactor = 1.1;
@@ -677,12 +721,12 @@ function MainApp() {
             mousePos = this.mapSVG.getMapPosition(pageX,
                                                      pageY);
             this.setCoordDisplay(mousePos.x, mousePos.y);
-            nearbyFeature = this.mapSVG.getFeatureNear(mousePos.x,
-                                                          mousePos.y);
+            // nearbyFeature = this.mapSVG.getFeatureNear(mousePos.x,
+            //                                               mousePos.y);
         }
         // show feature name in mouse tooltip, or remove tooltip if
         // nearbyFeature is null
-        this._setMouseoverBox(nearbyFeature, pageX, pageY);
+        // this._setMouseoverBox(nearbyFeature, pageX, pageY);
         // clear so that click and drags won't cause a feature selection
         this.clickedFeature = null;
     };
