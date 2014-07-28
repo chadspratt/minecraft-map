@@ -71,7 +71,7 @@ function FeatureInfo(selector) {
     this.lastPosition = null;
     // set any links in the feature info to call this.load(link.title)
     this.redirectLinks = function () {
-        this.infoArea.find('a').click(function followLink(clickEvent) {
+        this.infoArea.find('featureInfoBody a').click(function followLink(clickEvent) {
             // don't follow the link
             clickEvent.preventDefault();
             // load the info in #featureinfo
@@ -199,6 +199,13 @@ function FeatureInfo(selector) {
                 y: this.lastPosition.y
             };
         }
+    };
+    this.close = function () {
+        this.initialPosition = null;
+        this.lastPosition = null;
+        this.infoWindow
+            .style('left', '-1000px')
+            .style('top', '-1000px');
     };
 }
 
@@ -830,6 +837,10 @@ $(document).ready(function initialSetup() {
     //         $('#editlist').slideUp(100);
     //     });
     // });
+    $('#boundFeatureInfo').on('click', '.featureInfoClose', function (event) {
+        event.preventDefault();
+        mainApp.boundFeatureInfo.close();
+    });
     $('#addfeature').on('click', function loadAddFeatureForm() {
         mainApp.boundFeatureInfo.loadForm('Feature');
     });

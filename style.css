@@ -54,10 +54,19 @@ body {
 }*/
 #boundFeatureInfo {
     position: absolute;
-    max-width: 600px;
-    top: 30px;
-    left: 810px;
+    max-width: 300px;
+    max-height: 400px;
+    /*off screen initially*/
+    top: -1000px;
+    left: -1000px;
     z-index: 2;
+}
+.featureInfoTitle {
+    padding-right: 10px;
+}
+.featureInfoClose {
+    position: relative;
+    right: 2px;
 }
 #mouseoverbox {
     position: absolute;
