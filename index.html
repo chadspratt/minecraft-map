@@ -15,20 +15,20 @@
 </head>
 <body>
 <svg id="mapSVG">
-    <g id="mapImageGroup"></g>
-    <g id="featureGroup"></g>
+  <g id="mapImageGroup"></g>
+  <g id="featureGroup"></g>
 </svg>
 
 <div id="mapcontrols" class="overlayitem">
-<!-- <div id="reloaddata" class="links">reload map</div>
-Zoom: -->
-<div id="updatedata" class="links">refresh</div>
-<button id="zoomout">
-  -
-</button>
-<button id="zoomin">
-  +
-</button>
+  <!-- <div id="reloaddata" class="links">reload map</div>
+  Zoom: -->
+  <div id="updatedata" class="links">refresh</div>
+  <button id="zoomout">
+    -
+  </button>
+  <button id="zoomin">
+    +
+  </button>
 </div>
 <div id="coorddisplay" class="overlayitem">x: z:</div>
 <div id="upperrightcontrols">
@@ -47,9 +47,11 @@ Zoom: -->
 </div>
 </div>
 
-<div id="debugarea"></div>
 <div id="mouseoverbox" class="overlayitem"></div>
-<div id="boundFeatureInfo" class="overlayitem"></div>
+<div id="boundFeatureInfo" class="overlayitem">
+  <div class="featureInfoTitle"></div>
+  <div class="featureInfoBody"></div>
+</div>
 
 </body>
 </html>

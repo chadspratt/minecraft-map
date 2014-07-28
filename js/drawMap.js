@@ -61,9 +61,14 @@ function FeatureInfo(selector) {
     'use strict';
     var self = this;
     this.infoWindow = d3.select(selector);
+    this.infoArea = $(selector);
+    // positioning relative to the feature icon
+    this.offset = {
+        x: 10,
+        y: -5
+    };
     this.initialPosition = null;
     this.lastPosition = null;
-    this.infoArea = $(selector);
     // set any links in the feature info to call this.load(link.title)
     this.redirectLinks = function () {
         this.infoArea.find('a').click(function followLink(clickEvent) {
@@ -73,6 +78,8 @@ function FeatureInfo(selector) {
             self.load(this.title);
         });
     };
+    // XXX this doesn't really have anything to do with the rest of the class
+    // but i'm going to redo it soon anyways
     this.loadForm = function (formName) {
         var instructions,
             initialValue = '',
@@ -129,10 +136,12 @@ function FeatureInfo(selector) {
             y: pageY
         };
         this.infoWindow
-            .style('left', pageX + 'px')
-            .style('top', pageY + 'px');
+            .style('left', (pageX + this.offset.x) + 'px')
+            .style('top', (pageY + this.offset.y) + 'px');
         // standardize the case for caching
         var lowercaseName = featureName.toLowerCase();
+        this.infoWindow.select('.featureInfoTitle').html(featureName);
+        this.infoWindow.select('.featureInfoBody').html('');
         if (mainApp.infoCache.hasOwnProperty(lowercaseName)) {
             this.infoArea.html(mainApp.infoCache[lowercaseName]);
             this.redirectLinks();
@@ -141,8 +150,9 @@ function FeatureInfo(selector) {
                    {title: featureName, action: 'render'})
                    // {title: featureName, printable: 'yes'})
                 .done(function featureInfoLoaded(data) {
-                    var header = '<h2>' + featureName + '</h2>';
-                    self.infoArea.html(header + data);
+                    // var header = '<h2>' + featureName + '</h2>';
+                    self.infoWindow.select('.featureInfoBody').html(data);
+                    // self.infoArea.html(header + data);
                     // remove any edit links
                     self.infoArea.find('span.editsection').remove();
                     self.redirectLinks();
@@ -167,17 +177,18 @@ function FeatureInfo(selector) {
                 y: this.initialPosition.y + delta.y
             };
             this.infoWindow
-                .style('left', this.lastPosition.x + 'px')
-                .style('top', this.lastPosition.y + 'px');
+                .style('left', (this.lastPosition.x + this.offset.x) + 'px')
+                .style('top', (this.lastPosition.y + this.offset.y) + 'px');
         }
     };
+    // XXX the box drifts away from the icon when zooming in for some reason
     this.zoom = function (pageX, pageY, zoomFactor) {
         if (this.lastPosition !== null) {
-            this.lastPosition.x += (this.lastPosition.x - pageX) * zoomFactor - (this.lastPosition.x - pageX);
-            this.lastPosition.y += (this.lastPosition.y - pageY) * zoomFactor - (this.lastPosition.y - pageY);
+            this.lastPosition.x += (this.lastPosition.x - pageX) * (zoomFactor - 1);
+            this.lastPosition.y += (this.lastPosition.y - pageY) * (zoomFactor - 1);
             this.infoWindow
-                .style('left', this.lastPosition.x + 'px')
-                .style('top', this.lastPosition.y + 'px');
+                .style('left', (this.lastPosition.x + this.offset.x) + 'px')
+                .style('top', (this.lastPosition.y + this.offset.y) + 'px');
         }
         this.savePosition();
     };
@@ -554,8 +565,8 @@ function MapSVG() {
             if (self.featureClicked) {
                 self.featureClicked = false;
                 mainApp.boundFeatureInfo.load(d.name,
-                                              d3.event.pageX + 10,
-                                              d3.event.pageY - 5);
+                                              d3.event.pageX,
+                                              d3.event.pageY);
             }
         });
     };
