@@ -678,38 +678,35 @@ function MainApp() {
             // self.mapSVG.needUpdate = true;
         });
     };
-    this.createCheckBox = function (category) {
-        var checkbox = ['<input',
-                        'type="checkbox"',
-                        'class="categoryToggle"',
-                        'id="' + category.name + '"',
-                        'checked="checked"',
-                        '/>'].join(' '),
-            image = ['<img',
-                     'src="' + category.image + '"',
-                     'height=10px',
-                     'width=10px',
-                     '/>'].join(' '),
-            checkboxWithLabel = checkbox + image + category.name;
-        return '<li><label>' + checkboxWithLabel + '</label></li>\n';
-    };
-    this.createCheckboxList = function (categoryName) {
-        var category,
-            subcategory,
-            checkBoxHtml = '<ul>\n',
-            i;
-        category = this.mapSVG.mapData.categories[categoryName];
-        checkBoxHtml += this.createCheckBox(category);
-        for (i = 0; i < category.children.length; i += 1) {
-            subcategory = category.children[i];
-            // recurse over children
-            checkBoxHtml += this.createCheckboxList(subcategory);
+    this.createCheckboxList = function (featureCategoryLists) {
+        var item = featureCategoryLists.append('li');
+        var checkbox = item.append('input')
+            .attr('type', 'checkbox')
+            .classed('categoryToggle', true)
+            .attr('id', function (d) { return d; })
+            .attr('checked', 'checked');
+        var image = item.append('img')
+            .attr('src', function (d) {
+                return self.mapSVG.mapData.categories[d].image;
+            })
+            .attr('height', '10px')
+            .attr('width', '10px');
+        var label = item.append('label')
+            .attr('for', function (d) { return d; })
+            .text(function (d) { return d; });
+        var children = featureCategoryLists.selectAll('ul')
+            .data(function (d) {
+                return self.mapSVG.mapData.categories[d].children;
+            })
+          .enter().append('ul');
+        if (!children.empty()) {
+            this.createCheckboxList(children);
         }
-        checkBoxHtml += '</ul>\n';
-        return checkBoxHtml;
     };
     this.createCheckboxes = function () {
-        $('#layerlist').html(this.createCheckboxList('Features'));
+        var rootFeature = d3.select('#layerlist').selectAll('ul').data(['Features'])
+            .enter().append('ul');
+        this.createCheckboxList(rootFeature);
         this.setCheckboxHandlers();
     };
     this.init = function () {
