@@ -23,10 +23,6 @@ function MapImagery(centerX, centerY, zoomLevel, imageURL) {
     this.boundary = new Boundary(centerX, centerY, mapSize, mapSize);
     this.zoomLevel = zoomLevel;
     this.image = document.createElement('img');
-    // this.image.onload = function () {
-    //     mainApp.mapSVG.needUpdate = true;
-    //     self.ready = true;
-    // };
     this.image.src = imageURL;
 }
 
@@ -364,6 +360,7 @@ function MapSVG() {
     this.svgWidth = null;
     this.svgHeight = null;
     this.mapData = null;
+    this.featureGroups = {};
 
     this.viewBox = {left: 0,
                     top: 0,
@@ -505,10 +502,11 @@ function MapSVG() {
                 });
                 return categoryArray;
             });
-        categories.enter().append('g')
-            .attr('categoryId', function (d, i) {
-                return 'featureCategory' + i;
-            });
+        categories.enter().append('g');
+        categories.each(function (d) {
+                // store a reference to the element for toggling it later
+                self.featureGroups[d.name] = d3.select(this);
+        });
         features = categories.selectAll('image')
             .data(function (d) {
                 var featureArray = [];
@@ -586,6 +584,11 @@ function MapSVG() {
                 d3.event.preventDefault();
             });
         }
+    };
+    this.toggleFeatureGroup = function (name) {
+        self.featureGroups[name].classed('hiddenFeatureGroup', function (d) {
+            return !d3.select(this).classed('hiddenFeatureGroup');
+        });
     };
     this.startPan = function (pageX, pageY) {
         this.startTranslation = {
@@ -666,16 +669,13 @@ function MainApp() {
     this.mapSVG = null;
     this.coordDisplay = null;
     this.boundFeatureInfo = null;
-    // this.mouseIsDown = false;
-    // this.clickedFeature = null;
 
     // cache data when feature is clicked
     this.infoCache = {};
     // set the handlers for when a category is toggled
     this.setCheckboxHandlers = function () {
         $('.categoryToggle').on('click', function updateCategories() {
-            self.mapSVG.mapData.categories[this.id].isVisible = this.checked;
-            // self.mapSVG.needUpdate = true;
+            self.mapSVG.toggleFeatureGroup(this.id);
         });
     };
     this.createCheckboxList = function (featureCategoryLists) {
@@ -733,9 +733,6 @@ function MainApp() {
         }
         this.mouseIsDown = true;
         this.mapSVG.startPan(pageX, pageY);
-        // mousePos = this.mapSVG.getMapPosition(pageX, pageY);
-        // this.clickedFeature = this.mapSVG.getFeatureNear(mousePos.x,
-        //                                                     mousePos.y);
     };
     this.moveMouse = function (pageX, pageY) {
         var mousePos = {x: 0, y: 0},
@@ -743,29 +740,18 @@ function MainApp() {
         // pan the map
         if (this.mouseIsDown) {
             this.mapSVG.continuePan(pageX, pageY);
-        // update cursor coordinates and check against features
+        // update cursor coordinates
         } else {
             mousePos = this.mapSVG.getMapPosition(pageX,
                                                      pageY);
             this.setCoordDisplay(mousePos.x, mousePos.y);
-            // nearbyFeature = this.mapSVG.getFeatureNear(mousePos.x,
-            //                                               mousePos.y);
         }
-        // show feature name in mouse tooltip, or remove tooltip if
-        // nearbyFeature is null
-        // this._setMouseoverBox(nearbyFeature, pageX, pageY);
-        // clear so that click and drags won't cause a feature selection
-        this.clickedFeature = null;
     };
     this.endMouse = function (pageX, pageY) {
         // check that the click started on the canvas
         if (this.mouseIsDown) {
             this.mouseIsDown = false;
             this.mapSVG.endPan(pageX, pageY);
-            // this.mapSVG.needUpdate = true;
-            // if (this.clickedFeature !== null) {
-            //     this.boundFeatureInfo.load(this.clickedFeature);
-            // }
         }
     };
 }
@@ -777,9 +763,6 @@ $(document).ready(function initialSetup() {
     mainApp.init();
 
     $('#mapSVG').on({
-        // 'dragstart': 'image', function (event) {
-        //     event.preventDefault();
-        // },
         'mousedown': function canvasMouseButtonPressed(event) {
             mainApp.startMouse(event.pageX, event.pageY);
         },

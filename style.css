@@ -11,6 +11,9 @@ body {
     /*on bottom*/
     z-index: 0;
 }
+.hiddenFeatureGroup {
+    display: none;
+}
 #mapoverlay {
     position: absolute;
     top: 0px;
