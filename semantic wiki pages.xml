@@ -1,0 +1,274 @@
+<mediawiki xmlns="http://www.mediawiki.org/xml/export-0.8/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mediawiki.org/xml/export-0.8/ http://www.mediawiki.org/xml/export-0.8.xsd" version="0.8" xml:lang="en">
+  <siteinfo>
+    <sitename>Hobbescraft</sitename>
+    <base>http://dogtato.net/minecraft/index.php?title=Main_Page</base>
+    <generator>MediaWiki 1.22.5</generator>
+    <case>first-letter</case>
+    <namespaces>
+      <namespace key="-2" case="first-letter">Media</namespace>
+      <namespace key="-1" case="first-letter">Special</namespace>
+      <namespace key="0" case="first-letter"/>
+      <namespace key="1" case="first-letter">Talk</namespace>
+      <namespace key="2" case="first-letter">User</namespace>
+      <namespace key="3" case="first-letter">User talk</namespace>
+      <namespace key="4" case="first-letter">Hobbescraft</namespace>
+      <namespace key="5" case="first-letter">Hobbescraft talk</namespace>
+      <namespace key="6" case="first-letter">File</namespace>
+      <namespace key="7" case="first-letter">File talk</namespace>
+      <namespace key="8" case="first-letter">MediaWiki</namespace>
+      <namespace key="9" case="first-letter">MediaWiki talk</namespace>
+      <namespace key="10" case="first-letter">Template</namespace>
+      <namespace key="11" case="first-letter">Template talk</namespace>
+      <namespace key="12" case="first-letter">Help</namespace>
+      <namespace key="13" case="first-letter">Help talk</namespace>
+      <namespace key="14" case="first-letter">Category</namespace>
+      <namespace key="15" case="first-letter">Category talk</namespace>
+      <namespace key="102" case="first-letter">Property</namespace>
+      <namespace key="103" case="first-letter">Property talk</namespace>
+      <namespace key="106" case="first-letter">Form</namespace>
+      <namespace key="107" case="first-letter">Form talk</namespace>
+      <namespace key="108" case="first-letter">Concept</namespace>
+      <namespace key="109" case="first-letter">Concept talk</namespace>
+    </namespaces>
+  </siteinfo>
+  <page>
+    <title>Template:Map</title>
+    <ns>10</ns>
+    <id>75</id>
+    <revision>
+      <id>588</id>
+      <parentid>577</parentid>
+      <timestamp>2014-01-01T06:58:18Z</timestamp>
+      <contributor>
+        <username>Dogtaton</username>
+        <id>1</id>
+      </contributor>
+      <text xml:space="preserve" bytes="534">&lt;noinclude&gt;
+This is the "Map" template.
+It should be called in the following format:
+&lt;pre&gt;
+{{Map
+|X coord=
+|Z coord=
+|Zoom level=
+|World=
+|Image=
+}}
+&lt;/pre&gt;
+Edit the page to see the template text.
+&lt;/noinclude&gt;&lt;includeonly&gt;
+ [[X coord::{{{X coord|}}}| ]]
+ [[Z coord::{{{Z coord|}}}| ]]
+ {{#if: {{{Zoom level|}}} | [[Zoom level::{{{Zoom level|}}}]] | [[Zoom level::3]]}}
+ {{#if: {{{World|}}} | [[Category:{{{World|}}}]] | [[Category:World 1]]}}
+ [[Image location::{{{Image|}}}| ]]
+ [[File:{{{Image|}}}]]
+ [[Category:Maps]]
+&lt;/includeonly&gt;</text>
+      <sha1>noyienla9wvx0a9gisjuc896wmqoo56</sha1>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+    </revision>
+  </page>
+  <page>
+    <title>Template:Feature</title>
+    <ns>10</ns>
+    <id>143</id>
+    <revision>
+      <id>573</id>
+      <parentid>568</parentid>
+      <timestamp>2014-01-01T04:09:18Z</timestamp>
+      <contributor>
+        <username>Dogtaton</username>
+        <id>1</id>
+      </contributor>
+      <text xml:space="preserve" bytes="507">&lt;noinclude&gt;
+This is the "Feature" template.
+It should be called in the following format:
+&lt;pre&gt;
+{{Feature
+|X coord=
+|Y coord=
+|Z coord=
+|CategoryName=
+|World=
+}}
+&lt;/pre&gt;
+Edit the page to see the template text.
+&lt;/noinclude&gt;&lt;includeonly&gt;
+{{Loc2|{{{X coord}}}|{{{Y coord|}}}|{{{Z coord|}}} }}
+ [[X coord::{{{X coord|}}}| ]] 
+ [[Y coord::{{{Y coord|}}}| ]] 
+ [[Z coord::{{{Z coord|}}}| ]] 
+ [[Category:{{{CategoryName|}}}]] 
+ {{#if: {{{World|}}} | [[Category:{{{World|}}}]] | [[Category:World 1]]}}
+&lt;/includeonly&gt;</text>
+      <sha1>rpkh9nlwxl5c35bsw4zhcrqvtlm6tgr</sha1>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+    </revision>
+  </page>
+  <page>
+    <title>Template:Feature Category</title>
+    <ns>10</ns>
+    <id>152</id>
+    <revision>
+      <id>525</id>
+      <parentid>523</parentid>
+      <timestamp>2013-12-28T01:02:25Z</timestamp>
+      <contributor>
+        <username>Dogtaton</username>
+        <id>1</id>
+      </contributor>
+      <text xml:space="preserve" bytes="539">&lt;noinclude&gt;
+This is the "Feature Category" template.
+It should be called in the following format:
+&lt;pre&gt;
+{{Feature Category
+|FeatureIcon=
+|ParentCategory=
+}}
+&lt;/pre&gt;
+Edit the page to see the template text.
+&lt;/noinclude&gt;&lt;includeonly&gt;
+ {{#if: {{{FeatureIcon|}}} | 
+  [[Icon::{{{FeatureIcon|}}}| ]] 
+  [[File:{{{FeatureIcon|}}}|right|50px|50px]]
+ |}}
+ {{#if: {{{ParentCategory|}}} | [[Category:{{{ParentCategory|}}}]] | }}
+ [[Category:Feature Class]]
+ [[Page has default form::Feature Category| ]]
+ [[Has default form::Feature| ]]
+&lt;/includeonly&gt;</text>
+      <sha1>8heibhmzuqsvhyzaxztga2spc86ol2w</sha1>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+    </revision>
+  </page>
+  <page>
+    <title>Property:Icon</title>
+    <ns>102</ns>
+    <id>129</id>
+    <revision>
+      <id>492</id>
+      <parentid>485</parentid>
+      <timestamp>2013-12-25T04:43:12Z</timestamp>
+      <contributor>
+        <username>Dogtaton</username>
+        <id>1</id>
+      </contributor>
+      <text xml:space="preserve" bytes="18">[[has type::Text]]</text>
+      <sha1>ge8r9las11sad43o3xs8lz3f4587frx</sha1>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+    </revision>
+  </page>
+  <page>
+    <title>Property:Image location</title>
+    <ns>102</ns>
+    <id>122</id>
+    <revision>
+      <id>544</id>
+      <parentid>364</parentid>
+      <timestamp>2013-12-29T04:43:28Z</timestamp>
+      <contributor>
+        <username>Dogtaton</username>
+        <id>1</id>
+      </contributor>
+      <text xml:space="preserve" bytes="18">[[Has type::text]]</text>
+      <sha1>l71goy82ave4q87lo1bulwuxz0mniuf</sha1>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+    </revision>
+  </page>
+  <page>
+    <title>Property:Subcategory of</title>
+    <ns>102</ns>
+    <id>130</id>
+    <revision>
+      <id>399</id>
+      <timestamp>2013-11-27T05:27:03Z</timestamp>
+      <contributor>
+        <username>Dogtaton</username>
+        <id>1</id>
+      </contributor>
+      <comment>Created page with "[[Has type::page]]"</comment>
+      <text xml:space="preserve" bytes="18">[[Has type::page]]</text>
+      <sha1>tcvejw32w09bo22sofh9jvau7ui08n2</sha1>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+    </revision>
+  </page>
+  <page>
+    <title>Property:X coord</title>
+    <ns>102</ns>
+    <id>111</id>
+    <revision>
+      <id>311</id>
+      <timestamp>2013-09-14T21:37:39Z</timestamp>
+      <contributor>
+        <username>Dogtaton</username>
+        <id>1</id>
+      </contributor>
+      <comment>Created page with "[[has type::number]]"</comment>
+      <text xml:space="preserve" bytes="20">[[has type::number]]</text>
+      <sha1>grsvrxwmw8mq6i6ak6kcflfo3cbcuwd</sha1>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+    </revision>
+  </page>
+  <page>
+    <title>Property:Y coord</title>
+    <ns>102</ns>
+    <id>112</id>
+    <revision>
+      <id>313</id>
+      <timestamp>2013-09-14T21:39:22Z</timestamp>
+      <contributor>
+        <username>Dogtaton</username>
+        <id>1</id>
+      </contributor>
+      <comment>Created page with "[[has type::number]]"</comment>
+      <text xml:space="preserve" bytes="20">[[has type::number]]</text>
+      <sha1>grsvrxwmw8mq6i6ak6kcflfo3cbcuwd</sha1>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+    </revision>
+  </page>
+  <page>
+    <title>Property:Z coord</title>
+    <ns>102</ns>
+    <id>113</id>
+    <revision>
+      <id>314</id>
+      <timestamp>2013-09-14T21:39:33Z</timestamp>
+      <contributor>
+        <username>Dogtaton</username>
+        <id>1</id>
+      </contributor>
+      <comment>Created page with "[[has type::number]]"</comment>
+      <text xml:space="preserve" bytes="20">[[has type::number]]</text>
+      <sha1>grsvrxwmw8mq6i6ak6kcflfo3cbcuwd</sha1>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+    </revision>
+  </page>
+  <page>
+    <title>Property:Zoom level</title>
+    <ns>102</ns>
+    <id>165</id>
+    <revision>
+      <id>586</id>
+      <timestamp>2014-01-01T06:43:04Z</timestamp>
+      <contributor>
+        <username>Dogtaton</username>
+        <id>1</id>
+      </contributor>
+      <comment>Created page with "[[Has type::number]]"</comment>
+      <text xml:space="preserve" bytes="20">[[Has type::number]]</text>
+      <sha1>h6mevl4yo3aw5jqi72r0gryfyi4dloa</sha1>
+      <model>wikitext</model>
+      <format>text/x-wiki</format>
+    </revision>
+  </page>
+</mediawiki>
