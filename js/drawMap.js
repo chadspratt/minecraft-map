@@ -55,6 +55,11 @@ function HierarchyMember() {
     this.parentCat = null;
     this.children = [];
 }
+function AddOrEditForm() {
+    'use strict';
+    var self = this;
+    this.formArea = $('#editPrompt');
+}
 function FeatureInfo(selector) {
     'use strict';
     var self = this;
@@ -84,7 +89,7 @@ function FeatureInfo(selector) {
             initialValue = '',
             extraInput = '',
             form,
-            formArea = $('#editprompt');
+            formArea = $('#editPrompt');
         if (formName === 'Map') {
             initialValue = 'Map_';
         } else if (formName === 'Feature_Category') {
@@ -201,7 +206,7 @@ function FeatureInfo(selector) {
                 .style('top', (this.lastPosition.y + this.offset.y) + 'px');
         }
     };
-    // XXX the box drifts away from the icon when zooming in for some reason
+    // XXX the box drifts away from the icon when zoomIng in for some reason
     this.zoom = function (pageX, pageY, zoomFactor) {
         if (this.lastPosition !== null) {
             this.lastPosition.x += (this.lastPosition.x - pageX) * (zoomFactor - 1);
@@ -514,7 +519,7 @@ function MapSVG() {
             featureHeight,
             categories,
             features,
-            mouseoverBox = d3.select("#mouseoverbox");
+            mouseoverBox = d3.select("#mouseoverBox");
         categories = d3.select('#featureGroup').selectAll('g')
             .data(function convertCategoriesToArray() {
                 var categoryArray = [];
@@ -728,7 +733,7 @@ function MainApp() {
         }
     };
     this.createCheckboxes = function () {
-        var rootFeature = d3.select('#layerlist').selectAll('ul').data(['Features'])
+        var rootFeature = d3.select('#layerList').selectAll('ul').data(['Features'])
             .enter().append('ul');
         this.createCheckboxList(rootFeature);
         this.setCheckboxHandlers();
@@ -737,7 +742,7 @@ function MainApp() {
         this.mapSVG = new MapSVG();
         this.mapSVG.init();
         this.boundFeatureInfo = new FeatureInfo('#boundFeatureInfo');
-        this.coordDisplay = $('#coorddisplay');
+        this.coordDisplay = $('#coordDisplay');
         this.mapSVG.loadMap();
         $(this.mapSVG).on('canvasReady', function mapSVGReady() {
             self.createCheckboxes();
@@ -816,29 +821,29 @@ $(document).ready(function initialSetup() {
     //     mainApp.init();
     // });
     $('#reloaddata').on('click', mainApp.mapSVG.mapData.load);
-    $('#updatedata').on('click', mainApp.mapSVG.mapData.update);
-    $('#zoomout').on('click', function zoomOut() {
+    $('#updateData').on('click', mainApp.mapSVG.mapData.update);
+    $('#zoomOut').on('click', function zoomOut() {
         mainApp.mapSVG.zoomOut(mainApp.mapSVG.svgWidth / 2,
                                   mainApp.mapSVG.svgHeight / 2);
     });
-    $('#zoomin').on('click', function zoomIn() {
+    $('#zoomIn').on('click', function zoomIn() {
         mainApp.mapSVG.zoomIn(mainApp.mapSVG.svgWidth / 2,
                                   mainApp.mapSVG.svgHeight / 2);
     });
-    $('#layerlist').hide();
-    $('#layerheader').on('click', function showMapLayers() {
-        $('#layerlist').slideToggle();
+    $('#layerList').hide();
+    $('#layerHeader').on('click', function showMapLayers() {
+        $('#layerList').slideToggle();
     });
-    $('#editlist').hide();
-    $('#editheader').on('click', function toggleEditLinks() {
-        $('#editprompt').hide(0, function hideEditList() {
-            $('#editlist').slideToggle(100);
+    $('#editList').hide();
+    $('#editHeader').on('click', function toggleEditLinks() {
+        $('#editPrompt').hide(0, function hideEditList() {
+            $('#editList').slideToggle(100);
         });
     });
     // annoying
-    // $('#editbox').on('mouseleave', function hideEditPrompt() {
-    //     $('#editprompt').slideUp(100, function hideEditList() {
-    //         $('#editlist').slideUp(100);
+    // $('#editBox').on('mouseleave', function hideEditPrompt() {
+    //     $('#editPrompt').slideUp(100, function hideEditList() {
+    //         $('#editList').slideUp(100);
     //     });
     // });
     $('#boundFeatureInfo').on('click', '.featureInfoClose', function (event) {
@@ -849,13 +854,13 @@ $(document).ready(function initialSetup() {
         event.preventDefault();
         mainApp.boundFeatureInfo.loadEditFormForCurrentFeature();
     });
-    $('#addfeature').on('click', function loadAddFeatureForm() {
+    $('#addFeature').on('click', function loadAddFeatureForm() {
         mainApp.boundFeatureInfo.loadForm('Feature');
     });
-    $('#addcategory').on('click', function loadAddCategoryForm() {
+    $('#addCategory').on('click', function loadAddCategoryForm() {
         mainApp.boundFeatureInfo.loadForm('Feature_Category');
     });
-    $('#addmap').on('click', function loadAddMapForm() {
+    $('#addMap').on('click', function loadAddMapForm() {
         mainApp.boundFeatureInfo.loadForm('Map');
     });
 });

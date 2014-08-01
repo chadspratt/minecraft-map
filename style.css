@@ -14,43 +14,34 @@ body {
 .hiddenFeatureGroup {
     display: none;
 }
-#mapoverlay {
-    position: absolute;
-    top: 0px;
-    left: 0px;
-    /*width: 99%;*/
-    /*height: 99%;*/
-    /*on top of map*/
-    z-index: 1;
-}
-#mapcontrols {
+#mapControls {
     position: absolute;
     top: 10px;
     left: 10px;
     max-width: 100px;
 }
-#coorddisplay {
+#coordDisplay {
     position: absolute;
     left: 10px;
     bottom: 10px;
     max-width: 200px;
 }
-#upperrightcontrols {
+#upperRightControls {
     position: absolute;
     top: 10px;
     right: 10px;
 }
-#layerbox,
-#editbox{
+#layerBox,
+#editBox{
     float: right;
     clear: right;
 }
-#layerheader,
-#editheader,
-#editlist {
+#layerHeader,
+#editHeader,
+#editList {
     text-align: right;
 }
-/*#updatedata {
+/*#updateData {
     position: absolute;
     top: 10px;
     left: 810px;
@@ -66,6 +57,7 @@ body {
 }
 .featureInfoTitle {
     padding-right: 10px;
+    font-weight: bold;
 }
 .featureInfoClose {
     position: relative;
@@ -75,7 +67,7 @@ body {
     max-height: 400px;
     overflow: auto;
 }
-#mouseoverbox {
+#mouseoverBox {
     position: absolute;
     /*off screen initially*/
     top: -1000px;
@@ -89,7 +81,7 @@ body {
     cursor: pointer;
     text-decoration: underline;
 }
-.overlayitem {
+.overlayItem {
     background-color: #ffffff;
     border: 1px solid #d3d3d3;
 }
