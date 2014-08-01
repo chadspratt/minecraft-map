@@ -71,6 +71,10 @@ body {
     position: relative;
     right: 2px;
 }
+.featureInfoBody {
+    max-height: 400px;
+    overflow: auto;
+}
 #mouseoverbox {
     position: absolute;
     /*off screen initially*/

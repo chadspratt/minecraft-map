@@ -1,7 +1,9 @@
 /*global $ */
 var mainApp,
     // used for a popup for adding/editing wiki data
-    editWindow = null;
+    editWindow = null,
+    wikiPath = 'http://dogtato.net/minecraft/index.php',
+    mapPath = 'http://dogtato.net/mcmap';
 
 function Boundary(centerX, centerY, width, height) {
     'use strict';
@@ -58,6 +60,7 @@ function FeatureInfo(selector) {
     var self = this;
     this.infoWindow = d3.select(selector);
     this.infoArea = $(selector);
+    this.featureName = null;
     // positioning relative to the feature icon
     this.offset = {
         x: 10,
@@ -67,7 +70,7 @@ function FeatureInfo(selector) {
     this.lastPosition = null;
     // set any links in the feature info to call this.load(link.title)
     this.redirectLinks = function () {
-        this.infoArea.find('featureInfoBody a').click(function followLink(clickEvent) {
+        this.infoArea.find('.featureInfoBody a').click(function followLink(clickEvent) {
             // don't follow the link
             clickEvent.preventDefault();
             // load the info in #featureinfo
@@ -88,7 +91,7 @@ function FeatureInfo(selector) {
             extraInput = '<input type="hidden" value="Category" name="namespace" />';
         }
         // preliminary form to ask for the name of the data to create/edit
-        form = ['<form action="http://dogtato.net/minecraft/index.php?title=Special:FormStart" method="get">',
+        form = ['<form action="' + wikiPath + '?title=Special:FormStart" method="get">',
                     '<input size="25" value="' + initialValue + '" class="formInput" name="page_name" />',
                     '<input type="hidden" value="Special:FormStart" name="title" />',
                     '<input type="hidden" value="' + formName + '" name="form" />',
@@ -105,9 +108,8 @@ function FeatureInfo(selector) {
         formArea.html(instructions + form);
         formArea.slideDown(100);
         formArea.find('form').ajaxForm(function formResponse (data) {
-            var url = 'http://dogtato.net/minecraft/index.php',
-                pageName = data.match(/index\.php\?title\=([^"]+)/)[1],
-                fullurl = url + '?title=' + pageName;
+            var pageName = data.match(/index\.php\?title\=([^"]+)/)[1],
+                fullurl = wikiPath + '?title=' + pageName;
             // global editWindow
             if (editWindow === null || editWindow.closed) {
                 editWindow = window.open(fullurl,
@@ -122,6 +124,7 @@ function FeatureInfo(selector) {
         });
     };
     this.load = function (featureName, pageX, pageY) {
+        this.featureName = featureName;
         // save position so it can be adjusted during panning
         this.initialPosition = {
             x: pageX,
@@ -142,13 +145,11 @@ function FeatureInfo(selector) {
             this.infoArea.html(mainApp.infoCache[lowercaseName]);
             this.redirectLinks();
         } else {
-            $.post('http://dogtato.net/minecraft/index.php',
+            $.post(wikiPath,
                    {title: featureName, action: 'render'})
                    // {title: featureName, printable: 'yes'})
                 .done(function featureInfoLoaded(data) {
-                    // var header = '<h2>' + featureName + '</h2>';
                     self.infoWindow.select('.featureInfoBody').html(data);
-                    // self.infoArea.html(header + data);
                     // remove any edit links
                     self.infoArea.find('span.editsection').remove();
                     self.redirectLinks();
@@ -165,6 +166,27 @@ function FeatureInfo(selector) {
                     }
                 });
         }
+    };
+    this.loadEditFormForCurrentFeature = function () {
+        var editURL = wikiPath + '?title=' + this.featureName + '&action=formedit';
+        $.post(wikiPath,
+               {title: this.featureName,
+                action: 'formedit'})
+            .done(function featureEditFormLoaded(data) {
+                // insert just the form
+                var editForm = $(data).find('#sfForm');
+                editForm.attr('action', editURL);
+                self.infoArea.find('.featureInfoBody').html(editForm);
+                // when the form is submitted, show the result
+                editForm.ajaxForm(function formResponse (data) {
+                    // self.infoWindow.select('.featureInfoBody').html(data);
+                    self.infoArea.find('.featureInfoBody').html($(data).find('#mw-content-text'));
+                    // remove any edit links
+                    self.infoArea.find('span.editsection').remove();
+                    self.redirectLinks();
+                    mainApp.infoCache[self.featureName.toLowerCase()] = self.infoArea.html();
+                });
+            });
     };
     this.pan = function (delta) {
         if (this.initialPosition !== null) {
@@ -334,7 +356,7 @@ function MapData() {
     };
     this.load = function () {
         // load json from sql database through php
-        $.post('http://dogtato.net/mcmap/php/mapData.php',
+        $.post(mapPath + '/php/mapData.php',
                {action: 'get'})
             .done(function mapDataReceived(data) {
                 self.processData(data);
@@ -342,7 +364,7 @@ function MapData() {
     };
     this.update = function () {
         // load json from sql database through php
-        $.post('http://dogtato.net/mcmap/php/mapData.php',
+        $.post(mapPath + '/php/mapData.php',
                {action: 'update'})
             .done(function mapDataReceived(data) {
                 self.processData(data);
@@ -820,6 +842,10 @@ $(document).ready(function initialSetup() {
     $('#boundFeatureInfo').on('click', '.featureInfoClose', function (event) {
         event.preventDefault();
         mainApp.boundFeatureInfo.close();
+    });
+    $('#boundFeatureInfo').on('click', '.featureInfoEdit', function (event) {
+        event.preventDefault();
+        mainApp.boundFeatureInfo.loadEditFormForCurrentFeature();
     });
     $('#addfeature').on('click', function loadAddFeatureForm() {
         mainApp.boundFeatureInfo.loadForm('Feature');
