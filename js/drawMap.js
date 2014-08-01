@@ -141,6 +141,8 @@ function FeatureInfo(selector) {
         var lowercaseName = featureName.toLowerCase();
         this.infoWindow.select('.featureInfoTitle').html(featureName);
         this.infoWindow.select('.featureInfoBody').html('');
+        this.infoWindow.select('.featureInfoOpen')
+            .attr('href', wikiPath + '?title=' + this.featureName);
         if (mainApp.infoCache.hasOwnProperty(lowercaseName)) {
             this.infoArea.html(mainApp.infoCache[lowercaseName]);
             this.redirectLinks();
