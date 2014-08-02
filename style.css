@@ -32,7 +32,7 @@ body {
     right: 10px;
 }
 #layerBox,
-#editBox{
+#editBox {
     float: right;
     clear: right;
 }
@@ -64,6 +64,11 @@ body {
     right: 2px;
 }
 .featureInfoBody {
+    max-height: 400px;
+    overflow: auto;
+}
+#editFormArea {
+    max-width: 300px;
     max-height: 400px;
     overflow: auto;
 }

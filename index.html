@@ -43,7 +43,20 @@
     <span id="addCategory" class="links">Category</span>,
     <span id="addMap" class="links">Map</span>
   </div>
-  <div id="editPrompt"></div>
+  <div id="editPrompt">
+    <span id="namePromptInstructions"></span>
+    <form id="namePromptForm" method="get">
+      <input type="text" name="page_name" value="" class="formInput" size="25" />
+      <input type="hidden" name="title" value="Special:FormStart" />
+      <input type="hidden" name="form" />
+      <input type="submit" value="Create or edit" />
+    </form>
+    <div id="editHeaderAndForm">
+      <span id="editFormHeader"></span>
+        <a href="#" class="hideEditHeaderAndForm">close</a>
+        <div id="editFormArea"></div>
+      </div>
+  </div>
 </div>
 </div>
 

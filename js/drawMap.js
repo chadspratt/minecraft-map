@@ -58,7 +58,81 @@ function HierarchyMember() {
 function AddOrEditForm() {
     'use strict';
     var self = this;
-    this.formArea = $('#editPrompt');
+    this.editPrompt = $('#editPrompt');
+    this.editHeaderAndForm = this.editPrompt.find('#editHeaderAndForm');
+    this.editFormHeader = this.editPrompt.find('#editFormHeader');
+    this.editFormArea = this.editPrompt.find('#editFormArea');
+    this.form = d3.select('#namePromptForm');
+    this.form.attr('action', wikiPath + '?title=Special:FormStart"');
+
+    // set any links in the feature info to call this.load(link.title)
+    this.redirectLinks = function () {
+        this.editPrompt.find('.featureInfoBody a').click(function followLink(clickEvent) {
+            // don't follow the link
+            clickEvent.preventDefault();
+            // load the info in #featureinfo
+            self.load(this.title);
+        });
+    };
+    this.loadForm = function (formName) {
+        var instructions,
+            initialValue = '',
+            extraInput = '';
+        this.form.select('input[name=page_name]')
+            .attr('value', function () {
+                var value = '';
+                if (formName === 'Map') {
+                    value = 'Map_';
+                }
+                return value;
+            });
+        if (formName === 'Feature_Category') {
+            this.form.append('input')
+                .attr('type', 'hidden')
+                .attr('name', 'namespace')
+                .attr('value', 'Category');
+            // extraInput = '<input type="hidden" value="Category" name="namespace" />';
+        } else {
+            this.form.select('input[name=namespace]').remove();
+        }
+        this.form.select('input[name=form]')
+            .attr('value', formName);
+        if (formName === 'Map') {
+            instructions = 'Map number:';
+        } else if (formName === 'Feature') {
+            instructions = 'Feature name:';
+        } else if (formName === 'Feature_Category') {
+            instructions = 'Category name:';
+        }
+        this.editPrompt.find('#namePromptInstructions').text(instructions);
+        // this.editPrompt.html(instructions + form);
+        this.editPrompt.slideDown(100);
+        $('#namePromptForm').ajaxForm(function formResponse (prelimPageData) {
+                var editPageURL = prelimPageData.match(/window\.location\="([^"]+)/)[1];
+                $.get(editPageURL)
+                    .done(function actualPageLoaded (data) {
+                        // insert just the form
+                        var editForm = $(data).find('#sfForm'),
+                            header = $(data).find('#firstHeading'),
+                            pageName = header.find('span').text().match(/: (.+)/)[1];
+                        editForm.attr('action', editPageURL);
+                        self.editFormHeader.html(header.html());
+                        editForm.find('#wpPreview').remove();
+                        editForm.find('#wpDiff').remove();
+                        self.editFormArea.html(editForm).show();
+                        self.editHeaderAndForm.show();
+                        // when the form is submitted, zoom to the feature and show the result
+                        editForm.ajaxForm(function formResponse (data) {
+                            mainApp.mapSVG.mapData.update();
+                            self.editPrompt.hide();
+                            self.editHeaderAndForm.hide();
+                            // have to get x and y
+                            // mainApp.mapSVG.centerOn(x, y);
+                            // mainApp.boundFeatureInfo.load(pageName);
+                    });
+                });
+        });
+    };
 }
 function FeatureInfo(selector) {
     'use strict';
@@ -80,52 +154,6 @@ function FeatureInfo(selector) {
             clickEvent.preventDefault();
             // load the info in #featureinfo
             self.load(this.title);
-        });
-    };
-    // XXX this doesn't really have anything to do with the rest of the class
-    // but i'm going to redo it soon anyways
-    this.loadForm = function (formName) {
-        var instructions,
-            initialValue = '',
-            extraInput = '',
-            form,
-            formArea = $('#editPrompt');
-        if (formName === 'Map') {
-            initialValue = 'Map_';
-        } else if (formName === 'Feature_Category') {
-            extraInput = '<input type="hidden" value="Category" name="namespace" />';
-        }
-        // preliminary form to ask for the name of the data to create/edit
-        form = ['<form action="' + wikiPath + '?title=Special:FormStart" method="get">',
-                    '<input size="25" value="' + initialValue + '" class="formInput" name="page_name" />',
-                    '<input type="hidden" value="Special:FormStart" name="title" />',
-                    '<input type="hidden" value="' + formName + '" name="form" />',
-                    extraInput,
-                    '<input type="submit" value="Create or edit" />',
-                '</form>'].join(' ');
-        if (formName === 'Map') {
-            instructions = 'Map number:';
-        } else if (formName === 'Feature') {
-            instructions = 'Feature name:';
-        } else if (formName === 'Feature_Category') {
-            instructions = 'Category name:';
-        }
-        formArea.html(instructions + form);
-        formArea.slideDown(100);
-        formArea.find('form').ajaxForm(function formResponse (data) {
-            var pageName = data.match(/index\.php\?title\=([^"]+)/)[1],
-                fullurl = wikiPath + '?title=' + pageName;
-            // global editWindow
-            if (editWindow === null || editWindow.closed) {
-                editWindow = window.open(fullurl,
-                                         'editWindow',"width=800,height=700");
-            } else {
-                editWindow.location.href = fullurl;
-                editWindow.focus();
-            }
-            // could use this on the form that's loaded to show the update
-            // on the map immediately
-            // this.infoArea.find('form').ajaxForm(function formResponse (data) {
         });
     };
     this.load = function (featureName, pageX, pageY) {
@@ -182,6 +210,8 @@ function FeatureInfo(selector) {
             .done(function featureEditFormLoaded(data) {
                 // insert just the form
                 var editForm = $(data).find('#sfForm');
+                editForm.find('#wpPreview').remove();
+                editForm.find('#wpDiff').remove();
                 editForm.attr('action', editURL);
                 self.infoArea.find('.featureInfoBody').html(editForm);
                 // when the form is submitted, show the result
@@ -206,7 +236,7 @@ function FeatureInfo(selector) {
                 .style('top', (this.lastPosition.y + this.offset.y) + 'px');
         }
     };
-    // XXX the box drifts away from the icon when zoomIng in for some reason
+    // XXX the box drifts away from the icon when zooming in for some reason
     this.zoom = function (pageX, pageY, zoomFactor) {
         if (this.lastPosition !== null) {
             this.lastPosition.x += (this.lastPosition.x - pageX) * (zoomFactor - 1);
@@ -619,6 +649,14 @@ function MapSVG() {
             return !d3.select(this).classed('hiddenFeatureGroup');
         });
     };
+    this.applyViewBox = function () {
+        self.svg.attr('viewBox', function() {
+            return self.viewBox.left + ' ' +
+                   self.viewBox.top + ' ' +
+                   self.viewBox.width + ' ' +
+                   self.viewBox.height;
+        });
+    };
     this.startPan = function (pageX, pageY) {
         this.startTranslation = {
             x: pageX,
@@ -635,12 +673,7 @@ function MapSVG() {
             y: pageY - this.startTranslation.y};
         this.viewBox.left = this.viewBoxStart.left - mouseDelta.x / this.scale;
         this.viewBox.top = this.viewBoxStart.top - mouseDelta.y / this.scale;
-        self.svg.attr('viewBox', function() {
-            return self.viewBox.left + ' ' +
-                   self.viewBox.top + ' ' +
-                   self.viewBox.width + ' ' +
-                   self.viewBox.height;
-        });
+        self.applyViewBox();
         mainApp.boundFeatureInfo.pan(mouseDelta);
         // distinguish pans from clicks
             self.featureClicked = false;
@@ -659,12 +692,7 @@ function MapSVG() {
         this.viewBox.top += (pageY - this.y) / this.scale * (zoomFactor - 1);
         this.viewBox.width = this.viewBox.width / zoomFactor;
         this.viewBox.height = this.viewBox.height / zoomFactor;
-        this.svg.attr('viewBox', function() {
-            return self.viewBox.left + ' ' +
-                   self.viewBox.top + ' ' +
-                   self.viewBox.width + ' ' +
-                   self.viewBox.height;
-        });
+        this.applyViewBox();
         self.scaleFeatures();
         mainApp.boundFeatureInfo.zoom(pageX, pageY, zoomFactor);
     };
@@ -675,14 +703,14 @@ function MapSVG() {
         this.viewBox.top = this.viewBox.top + (pageY - this.y) / this.scale * (zoomFactor - 1);
         this.viewBox.width = this.viewBox.width / zoomFactor;
         this.viewBox.height = this.viewBox.height / zoomFactor;
-        this.svg.attr('viewBox', function() {
-            return self.viewBox.left + ' ' +
-                   self.viewBox.top + ' ' +
-                   self.viewBox.width + ' ' +
-                   self.viewBox.height;
-        });
+        this.applyViewBox();
         self.scaleFeatures();
         mainApp.boundFeatureInfo.zoom(pageX, pageY, zoomFactor);
+    };
+    this.centerOn = function (x, y) {
+        this.viewBox.left = x - self.viewBox.width / 2;
+        this.viewBox.top = y - self.viewBox.height / 2;
+        this.applyViewBox();
     };
     this.getMapPosition = function (pageX, pageY) {
         return {
@@ -698,6 +726,7 @@ function MainApp() {
     this.mapSVG = null;
     this.coordDisplay = null;
     this.boundFeatureInfo = null;
+    this.addOrEditForm = null;
 
     // cache data when feature is clicked
     this.infoCache = {};
@@ -742,6 +771,7 @@ function MainApp() {
         this.mapSVG = new MapSVG();
         this.mapSVG.init();
         this.boundFeatureInfo = new FeatureInfo('#boundFeatureInfo');
+        this.addOrEditForm = new AddOrEditForm();
         this.coordDisplay = $('#coordDisplay');
         this.mapSVG.loadMap();
         $(this.mapSVG).on('canvasReady', function mapSVGReady() {
@@ -835,10 +865,16 @@ $(document).ready(function initialSetup() {
         $('#layerList').slideToggle();
     });
     $('#editList').hide();
+    $('#editPrompt').hide();
+    $('#editHeaderAndForm').hide();
     $('#editHeader').on('click', function toggleEditLinks() {
+        $('#editHeaderAndForm').hide();
         $('#editPrompt').hide(0, function hideEditList() {
             $('#editList').slideToggle(100);
         });
+    });
+    $('a.hideEditHeaderAndForm').on('click', function hideEditHeaderAndForm () {
+        $('#editHeaderAndForm').hide();
     });
     // annoying
     // $('#editBox').on('mouseleave', function hideEditPrompt() {
@@ -855,12 +891,12 @@ $(document).ready(function initialSetup() {
         mainApp.boundFeatureInfo.loadEditFormForCurrentFeature();
     });
     $('#addFeature').on('click', function loadAddFeatureForm() {
-        mainApp.boundFeatureInfo.loadForm('Feature');
+        mainApp.addOrEditForm.loadForm('Feature');
     });
     $('#addCategory').on('click', function loadAddCategoryForm() {
-        mainApp.boundFeatureInfo.loadForm('Feature_Category');
+        mainApp.addOrEditForm.loadForm('Feature_Category');
     });
     $('#addMap').on('click', function loadAddMapForm() {
-        mainApp.boundFeatureInfo.loadForm('Map');
+        mainApp.addOrEditForm.loadForm('Map');
     });
 });
